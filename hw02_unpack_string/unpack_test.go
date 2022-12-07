@@ -1,9 +1,10 @@
-package hw02unpackstring
+package hw02unpackstring_test
 
 import (
 	"errors"
 	"testing"
 
+	hw02unpackstring "github.com/iantropov/otus-lang/hw02_unpack_string"
 	"github.com/stretchr/testify/require"
 )
 
@@ -26,7 +27,7 @@ func TestUnpack(t *testing.T) {
 	for _, tc := range tests {
 		tc := tc
 		t.Run(tc.input, func(t *testing.T) {
-			result, err := Unpack(tc.input)
+			result, err := hw02unpackstring.Unpack(tc.input)
 			require.NoError(t, err)
 			require.Equal(t, tc.expected, result)
 		})
@@ -38,8 +39,8 @@ func TestUnpackInvalidString(t *testing.T) {
 	for _, tc := range invalidStrings {
 		tc := tc
 		t.Run(tc, func(t *testing.T) {
-			_, err := Unpack(tc)
-			require.Truef(t, errors.Is(err, ErrInvalidString), "actual error %q", err)
+			_, err := hw02unpackstring.Unpack(tc)
+			require.Truef(t, errors.Is(err, hw02unpackstring.ErrInvalidString), "actual error %q", err)
 		})
 	}
 }
