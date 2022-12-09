@@ -13,14 +13,15 @@ type Mode int
 const (
 	StartMode Mode = iota
 	ValueMode
+	EscapeMode
 	QuantityMode
 	ErrorMode
 )
 
 type parser struct {
-	mode         Mode
-	previousRune rune
-	result       strings.Builder
+	mode        Mode
+	currentRune rune
+	result      strings.Builder
 }
 
 func Unpack(value string) (string, error) {
@@ -36,29 +37,41 @@ func Unpack(value string) (string, error) {
 
 func (parser *parser) processRune(r rune) {
 	if unicode.IsDigit(r) {
-		if parser.mode != ValueMode {
+		if parser.mode == EscapeMode {
+			parser.processRuneAsValue(r)
+		} else if parser.mode != ValueMode {
 			parser.mode = ErrorMode
 		} else {
-			parser.expandResult(r)
-			parser.mode = QuantityMode
+			parser.processRuneAsQuantity(r)
 		}
+	} else if r == '/' {
+		parser.mode = EscapeMode
 	} else {
-		if parser.mode == ValueMode {
-			parser.result.WriteRune(parser.previousRune)
-		}
-		parser.previousRune = r
-		parser.mode = ValueMode
+		parser.processRuneAsValue(r)
 	}
+}
+
+func (parser *parser) processRuneAsValue(r rune) {
+	if parser.mode == ValueMode {
+		parser.result.WriteRune(parser.currentRune)
+	}
+	parser.currentRune = r
+	parser.mode = ValueMode
+}
+
+func (parser *parser) processRuneAsQuantity(r rune) {
+	parser.expandResult(r)
+	parser.mode = QuantityMode
 }
 
 func (parser *parser) expandResult(q rune) {
 	quantity := int(q - '0')
-	parser.result.WriteString(strings.Repeat(string(parser.previousRune), quantity))
+	parser.result.WriteString(strings.Repeat(string(parser.currentRune), quantity))
 }
 
 func (parser *parser) getResult() string {
 	if parser.mode == ValueMode {
-		parser.result.WriteRune(parser.previousRune)
+		parser.result.WriteRune(parser.currentRune)
 	}
 	return parser.result.String()
 }
