@@ -3,6 +3,7 @@ package hw02unpackstring
 import (
 	"errors"
 	"strings"
+	"unicode"
 )
 
 var ErrInvalidString = errors.New("invalid string")
@@ -10,65 +11,54 @@ var ErrInvalidString = errors.New("invalid string")
 type Mode int
 
 const (
-	ValueMode Mode = iota
+	StartMode Mode = iota
+	ValueMode
 	QuantityMode
 	ErrorMode
 )
 
-type State struct {
-	mode        Mode
-	currentRune rune
-	result      strings.Builder
+type parser struct {
+	mode         Mode
+	previousRune rune
+	result       strings.Builder
 }
 
 func Unpack(value string) (string, error) {
-	state := emptyState()
+	parser := &parser{}
 	for _, r := range value {
-		error := state.processRune(r)
-		if error != nil {
-			return "", error
+		parser.processRune(r)
+		if parser.mode == ErrorMode {
+			return "", ErrInvalidString
 		}
 	}
-	return state.getResult(), nil
+	return parser.getResult(), nil
 }
 
-func emptyState() *State {
-	return &State{
-		mode: ValueMode,
-	}
-}
-
-func (state *State) processRune(r rune) error {
-	if state.mode == ValueMode {
-		if isValidValue(r) {
-			state.currentRune = r
-			state.mode = QuantityMode
+func (parser *parser) processRune(r rune) {
+	if unicode.IsDigit(r) {
+		if parser.mode != ValueMode {
+			parser.mode = ErrorMode
 		} else {
-			return ErrInvalidString
+			parser.expandResult(r)
+			parser.mode = QuantityMode
 		}
 	} else {
-		if isValidQuantity(r) {
-			state.expandResult()
-			state.mode = ValueMode
-		} else {
-			return ErrInvalidString
+		if parser.mode == ValueMode {
+			parser.result.WriteRune(parser.previousRune)
 		}
+		parser.previousRune = r
+		parser.mode = ValueMode
 	}
-	return nil
 }
 
-func (state *State) expandResult() {
-	state.result.WriteString(strings.Repeat(string(state.currentRune), 5))
+func (parser *parser) expandResult(q rune) {
+	quantity := int(q - '0')
+	parser.result.WriteString(strings.Repeat(string(parser.previousRune), quantity))
 }
 
-func (state *State) getResult() string {
-	return state.result.String()
-}
-
-func isValidValue(value rune) bool {
-	return true
-}
-
-func isValidQuantity(value rune) bool {
-	return true
+func (parser *parser) getResult() string {
+	if parser.mode == ValueMode {
+		parser.result.WriteRune(parser.previousRune)
+	}
+	return parser.result.String()
 }
