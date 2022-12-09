@@ -35,9 +35,9 @@ func Unpack(value string) (string, error) {
 	parser.processRemainingRune()
 	if parser.mode == ErrorMode {
 		return "", ErrInvalidString
-	} else {
-		return parser.getResult(), nil
 	}
+
+	return parser.getResult(), nil
 }
 
 func (parser *parser) processRune(r rune) {
@@ -61,16 +61,17 @@ func (parser *parser) flushRune() {
 }
 
 func (parser *parser) processRunAsUnescaped(r rune) {
-	if unicode.IsDigit(r) {
+	switch {
+	case unicode.IsDigit(r):
 		if parser.mode != ValueMode {
 			parser.mode = ErrorMode
 		} else {
 			parser.processRuneAsQuantity(r)
 		}
-	} else if r == '\\' {
+	case r == '\\':
 		parser.flushRune()
 		parser.mode = EscapeMode
-	} else {
+	default:
 		parser.processRuneAsValue(r)
 	}
 }
