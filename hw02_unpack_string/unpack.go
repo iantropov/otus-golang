@@ -32,31 +32,47 @@ func Unpack(value string) (string, error) {
 			return "", ErrInvalidString
 		}
 	}
-	return parser.getResult(), nil
+	parser.processRemainingRune()
+	if parser.mode == ErrorMode {
+		return "", ErrInvalidString
+	} else {
+		return parser.getResult(), nil
+	}
 }
 
 func (parser *parser) processRune(r rune) {
-	if unicode.IsDigit(r) {
-		if parser.mode == EscapeMode {
-			parser.processRuneAsValue(r)
-		} else if parser.mode != ValueMode {
-			parser.mode = ErrorMode
-		} else {
-			parser.processRuneAsQuantity(r)
-		}
-	} else if r == '/' {
-		parser.mode = EscapeMode
-	} else {
+	if parser.mode == EscapeMode {
 		parser.processRuneAsValue(r)
+	} else {
+		parser.processRunAsUnescaped(r)
 	}
 }
 
 func (parser *parser) processRuneAsValue(r rune) {
+	parser.flushRune()
+	parser.currentRune = r
+	parser.mode = ValueMode
+}
+
+func (parser *parser) flushRune() {
 	if parser.mode == ValueMode {
 		parser.result.WriteRune(parser.currentRune)
 	}
-	parser.currentRune = r
-	parser.mode = ValueMode
+}
+
+func (parser *parser) processRunAsUnescaped(r rune) {
+	if unicode.IsDigit(r) {
+		if parser.mode != ValueMode {
+			parser.mode = ErrorMode
+		} else {
+			parser.processRuneAsQuantity(r)
+		}
+	} else if r == '\\' {
+		parser.flushRune()
+		parser.mode = EscapeMode
+	} else {
+		parser.processRuneAsValue(r)
+	}
 }
 
 func (parser *parser) processRuneAsQuantity(r rune) {
@@ -69,9 +85,14 @@ func (parser *parser) expandResult(q rune) {
 	parser.result.WriteString(strings.Repeat(string(parser.currentRune), quantity))
 }
 
-func (parser *parser) getResult() string {
-	if parser.mode == ValueMode {
-		parser.result.WriteRune(parser.currentRune)
+func (parser *parser) processRemainingRune() {
+	if parser.mode == EscapeMode {
+		parser.mode = ErrorMode
+	} else {
+		parser.flushRune()
 	}
+}
+
+func (parser *parser) getResult() string {
 	return parser.result.String()
 }
