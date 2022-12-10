@@ -25,6 +25,10 @@ type parser struct {
 }
 
 func Unpack(value string) (string, error) {
+	if value == "" {
+		return "", nil
+	}
+
 	parser := &parser{}
 	for _, r := range value {
 		parser.processRune(r)
