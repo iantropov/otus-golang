@@ -7,7 +7,7 @@ import (
 )
 
 // Change to true if needed.
-var taskWithAsteriskIsCompleted = false
+var taskWithAsteriskIsCompleted = true
 
 var text = `Как видите, он  спускается  по  лестнице  вслед  за  своим
 	другом   Кристофером   Робином,   головой   вниз,  пересчитывая
@@ -54,7 +54,7 @@ func TestTop10(t *testing.T) {
 			"one",
 			"cat",
 			"cats",
-			"dog,",
+			"dog",
 			"dog,two",
 			"man",
 		}
