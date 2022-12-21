@@ -6,9 +6,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Change to true if needed.
-var taskWithAsteriskIsCompleted = true
-
 var text = `Как видите, он  спускается  по  лестнице  вслед  за  своим
 	другом   Кристофером   Робином,   головой   вниз,  пересчитывая
 	ступеньки собственным затылком:  бум-бум-бум.  Другого  способа
@@ -48,6 +45,15 @@ func TestTop10(t *testing.T) {
 		require.Len(t, Top10(""), 0)
 	})
 
+	t.Run("a small case with different words", func(t *testing.T) {
+		expected := []string{
+			"and",
+			"cat",
+			"dog",
+		}
+		require.Equal(t, expected, Top10("cat and dog"))
+	})
+
 	t.Run("a plain case with different words", func(t *testing.T) {
 		expected := []string{
 			"and",
@@ -61,35 +67,40 @@ func TestTop10(t *testing.T) {
 		require.Equal(t, expected, Top10("cat and dog, one dog,two cats and one man"))
 	})
 
-	t.Run("positive test", func(t *testing.T) {
-		if taskWithAsteriskIsCompleted {
-			expected := []string{
-				"а",         // 8
-				"он",        // 8
-				"и",         // 6
-				"ты",        // 5
-				"что",       // 5
-				"в",         // 4
-				"его",       // 4
-				"если",      // 4
-				"кристофер", // 4
-				"не",        // 4
-			}
-			require.Equal(t, expected, Top10(text))
-		} else {
-			expected := []string{
-				"он",        // 8
-				"а",         // 6
-				"и",         // 6
-				"ты",        // 5
-				"что",       // 5
-				"-",         // 4
-				"Кристофер", // 4
-				"если",      // 4
-				"не",        // 4
-				"то",        // 4
-			}
-			require.Equal(t, expected, Top10(text))
+	t.Run("a case with a lot of punctuation", func(t *testing.T) {
+		expected := []string{
+			"---",
+			"and-dog",
+			"cat",
+			"dog",
+			"repo",
 		}
+		require.Equal(t, expected, Top10(",,!!cat and-dog ??)dog((! --- - repo"))
+	})
+
+	t.Run("a case with capitals characters", func(t *testing.T) {
+		expected := []string{
+			"привет",
+			"с",
+			"тест",
+			"это",
+		}
+		require.Equal(t, expected, Top10("Привет это теСт с привет!!"))
+	})
+
+	t.Run("positive test", func(t *testing.T) {
+		expected := []string{
+			"а",         // 8
+			"он",        // 8
+			"и",         // 6
+			"ты",        // 5
+			"что",       // 5
+			"в",         // 4
+			"его",       // 4
+			"если",      // 4
+			"кристофер", // 4
+			"не",        // 4
+		}
+		require.Equal(t, expected, Top10(text))
 	})
 }
