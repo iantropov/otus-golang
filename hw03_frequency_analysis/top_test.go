@@ -104,3 +104,10 @@ func TestTop10(t *testing.T) {
 		require.Equal(t, expected, Top10(text))
 	})
 }
+
+func BenchmarkTop10(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		Top10(text)
+	}
+
+}
