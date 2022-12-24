@@ -4,7 +4,7 @@ import (
 	"errors"
 	"testing"
 
-	hw02unpackstring "github.com/iantropov/otus-lang/hw02_unpack_string"
+	hw02unpackstring "github.com/iantropov/otus-golang/hw02_unpack_string"
 	"github.com/stretchr/testify/require"
 )
 

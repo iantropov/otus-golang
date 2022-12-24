@@ -1,4 +1,4 @@
-module github.com/iantropov/otus-lang/hw03_frequency_analysis
+module github.com/iantropov/otus-golang/hw03_frequency_analysis
 
 go 1.16
 
