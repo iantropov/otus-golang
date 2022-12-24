@@ -46,5 +46,7 @@ func Top10(input string) []string {
 		wordsCount = 10
 	}
 
-	return sortedWords[:wordsCount:wordsCount]
+	result := make([]string, wordsCount)
+	copy(result, sortedWords)
+	return result
 }
