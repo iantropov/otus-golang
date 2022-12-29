@@ -49,8 +49,51 @@ func TestCache(t *testing.T) {
 		require.Nil(t, val)
 	})
 
-	t.Run("purge logic", func(t *testing.T) {
-		// Write me
+	t.Run("purge logic - simple succession", func(t *testing.T) {
+		c := NewCache(3)
+
+		wasInCache := c.Set("el1", 100)
+		require.False(t, wasInCache)
+
+		wasInCache = c.Set("el2", 200)
+		require.False(t, wasInCache)
+
+		wasInCache = c.Set("el3", 300)
+		require.False(t, wasInCache)
+
+		wasInCache = c.Set("el4", 400)
+		require.False(t, wasInCache)
+
+		val, ok := c.Get("el1")
+		require.False(t, ok)
+		require.Equal(t, nil, val)
+	})
+
+	t.Run("purge logic - complex succession", func(t *testing.T) {
+		c := NewCache(3)
+
+		wasInCache := c.Set("el1", 100)
+		require.False(t, wasInCache)
+
+		wasInCache = c.Set("el2", 200)
+		require.False(t, wasInCache)
+
+		wasInCache = c.Set("el3", 300)
+		require.False(t, wasInCache)
+
+		val, ok := c.Get("el1")
+		require.True(t, ok)
+		require.Equal(t, 100, val)
+
+		wasInCache = c.Set("el2", 400)
+		require.True(t, wasInCache)
+
+		wasInCache = c.Set("el4", 500)
+		require.False(t, wasInCache)
+
+		val, ok = c.Get("el3")
+		require.False(t, ok)
+		require.Equal(t, nil, val)
 	})
 }
 
