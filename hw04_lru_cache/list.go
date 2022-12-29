@@ -39,6 +39,7 @@ func (l *list) Back() *ListItem {
 
 func (l *list) PushFront(v interface{}) *ListItem {
 	newItem := new(ListItem)
+	newItem.Value = v
 	l.pushFront(newItem)
 	return l.head
 }
@@ -85,6 +86,10 @@ func (l *list) MoveToFront(i *ListItem) {
 func (l *list) pushFront(i *ListItem) {
 	if l.head != nil {
 		l.head.Prev = i
+	}
+
+	if l.tail == nil {
+		l.tail = i
 	}
 
 	i.Next = l.head
