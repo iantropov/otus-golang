@@ -53,6 +53,8 @@ func (l *list) PushBack(v interface{}) *ListItem {
 	newItem.Prev = l.tail
 	l.tail = newItem
 
+	l.len++
+
 	return l.tail
 }
 
@@ -68,6 +70,8 @@ func (l *list) Remove(i *ListItem) {
 	} else {
 		l.tail = i.Prev
 	}
+
+	l.len--
 
 	i.Next = nil
 	i.Prev = nil
@@ -85,4 +89,6 @@ func (l *list) pushFront(i *ListItem) {
 
 	i.Next = l.head
 	l.head = i
+
+	l.len++
 }
