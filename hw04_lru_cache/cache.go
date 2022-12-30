@@ -14,7 +14,7 @@ type lruCache struct {
 	capacity int
 	queue    List
 	items    map[Key]*ListItem
-	mutex    sync.RWMutex
+	mutex    sync.Mutex
 }
 
 type cacheItem struct {
@@ -31,13 +31,10 @@ func NewCache(capacity int) Cache {
 }
 
 func (lc *lruCache) Set(key Key, value interface{}) bool {
-	lc.mutex.RLock()
-	i, exists := lc.items[key]
-	lc.mutex.RUnlock()
-
 	lc.mutex.Lock()
 	defer lc.mutex.Unlock()
 
+	i, exists := lc.items[key]
 	if exists {
 		lc.queue.MoveToFront(i)
 		cacheItem := getCacheItem(i)
@@ -61,15 +58,13 @@ func (lc *lruCache) Set(key Key, value interface{}) bool {
 }
 
 func (lc *lruCache) Get(key Key) (interface{}, bool) {
-	lc.mutex.RLock()
+	lc.mutex.Lock()
+	defer lc.mutex.Unlock()
+
 	i, exists := lc.items[key]
-	lc.mutex.RUnlock()
 	if !exists {
 		return nil, false
 	}
-
-	lc.mutex.Lock()
-	defer lc.mutex.Unlock()
 
 	lc.queue.MoveToFront(i)
 	cacheItem := getCacheItem(i)

@@ -97,7 +97,7 @@ func TestCache(t *testing.T) {
 	})
 }
 
-func TestCacheMultithreading(t *testing.T) {
+func TestCacheConcurrentReadsAndWrites(t *testing.T) {
 	c := NewCache(10)
 	wg := &sync.WaitGroup{}
 	wg.Add(2)
@@ -119,7 +119,7 @@ func TestCacheMultithreading(t *testing.T) {
 	wg.Wait()
 }
 
-func TestCacheMultithreadingWithClear(t *testing.T) {
+func TestCacheConcurrentReadsAndWritesAndClear(t *testing.T) {
 	c := NewCache(10)
 	wg := &sync.WaitGroup{}
 	wg.Add(3)
