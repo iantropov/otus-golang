@@ -49,14 +49,55 @@ func TestCache(t *testing.T) {
 		require.Nil(t, val)
 	})
 
-	t.Run("purge logic", func(t *testing.T) {
-		// Write me
+	t.Run("purge logic - simple succession", func(t *testing.T) {
+		c := NewCache(3)
+
+		wasInCache := c.Set("el1", 100)
+		require.False(t, wasInCache)
+
+		wasInCache = c.Set("el2", 200)
+		require.False(t, wasInCache)
+
+		wasInCache = c.Set("el3", 300)
+		require.False(t, wasInCache)
+
+		wasInCache = c.Set("el4", 400)
+		require.False(t, wasInCache)
+
+		val, ok := c.Get("el1")
+		require.False(t, ok)
+		require.Equal(t, nil, val)
+	})
+
+	t.Run("purge logic - complex succession", func(t *testing.T) {
+		c := NewCache(3)
+
+		wasInCache := c.Set("el1", 100)
+		require.False(t, wasInCache)
+
+		wasInCache = c.Set("el2", 200)
+		require.False(t, wasInCache)
+
+		wasInCache = c.Set("el3", 300)
+		require.False(t, wasInCache)
+
+		val, ok := c.Get("el1")
+		require.True(t, ok)
+		require.Equal(t, 100, val)
+
+		wasInCache = c.Set("el2", 400)
+		require.True(t, wasInCache)
+
+		wasInCache = c.Set("el4", 500)
+		require.False(t, wasInCache)
+
+		val, ok = c.Get("el3")
+		require.False(t, ok)
+		require.Equal(t, nil, val)
 	})
 }
 
-func TestCacheMultithreading(t *testing.T) {
-	t.Skip() // Remove me if task with asterisk completed.
-
+func TestCacheConcurrentReadsAndWrites(t *testing.T) {
 	c := NewCache(10)
 	wg := &sync.WaitGroup{}
 	wg.Add(2)
@@ -72,6 +113,35 @@ func TestCacheMultithreading(t *testing.T) {
 		defer wg.Done()
 		for i := 0; i < 1_000_000; i++ {
 			c.Get(Key(strconv.Itoa(rand.Intn(1_000_000))))
+		}
+	}()
+
+	wg.Wait()
+}
+
+func TestCacheConcurrentReadsAndWritesAndClear(t *testing.T) {
+	c := NewCache(10)
+	wg := &sync.WaitGroup{}
+	wg.Add(3)
+
+	go func() {
+		defer wg.Done()
+		for i := 0; i < 1_000_000; i++ {
+			c.Set(Key(strconv.Itoa(i)), i)
+		}
+	}()
+
+	go func() {
+		defer wg.Done()
+		for i := 0; i < 1_000_000; i++ {
+			c.Get(Key(strconv.Itoa(rand.Intn(1_000_000))))
+		}
+	}()
+
+	go func() {
+		defer wg.Done()
+		for i := 0; i < 1_000_000; i++ {
+			c.Clear()
 		}
 	}()
 

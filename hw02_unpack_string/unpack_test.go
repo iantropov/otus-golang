@@ -45,3 +45,9 @@ func TestUnpackInvalidString(t *testing.T) {
 		})
 	}
 }
+
+func BenchmarkStaticStringUnpack(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		hw02unpackstring.Unpack("QA7w2tovAPA4wj9z3Ad9Z6c8TQSY3DTa2h8eFBЯHDiafXOBnBETyK3SoV1MtjCNy0a2h5E1v6Fk8VxzpLAf9yr7jxI6oCB3vdiHqLQA7w2tovAPA4wj9z3Ad9Z6c8TQSY3DTa2h8eFBЯHDiafXOBnBETyK3SoV1MtjCNy0a2h5E1v6Fk8VxzpLAf9yr7jxI6oCB3vdiHqLQA7w2tovAPA4wj9z3Ad9Z6c8TQSY3DTa2h8eFBЯHDiafXOBnBETyK3SoV1MtjCNy0a2h5E1v6Fk8VxzpLAf9yr7jxI6oCB3vdiHqLQA7w2tovAPA4wj9z3Ad9Z6c8TQSY3DTa2h8eFBЯHDiafXOBnBETyK3SoV1MtjCNy0a2h5E1v6Fk8VxzpLAf9yr7jxI6oCB3vdiHqL")
+	}
+}
