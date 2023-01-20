@@ -15,10 +15,18 @@ func Run(tasks []Task, n, m int) error {
 	runningTasks := 0
 	tasksPointer := 0
 
-	for i := 0; i < n; i++ {
+	if m < 0 {
+		m = 0
+	}
+
+	for i := 0; i < n && tasksPointer < len(tasks); i++ {
 		go doTask(tasks[tasksPointer], okChannel)
 		runningTasks++
 		tasksPointer++
+	}
+
+	if runningTasks == 0 {
+		return nil
 	}
 
 	var err error
