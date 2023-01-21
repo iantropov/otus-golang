@@ -106,20 +106,24 @@ func TestRun(t *testing.T) {
 		}
 
 		workersCount := 10
-		maxErrorsCount := 0
+		maxErrorsCount := 1
 		err := Run(tasks, workersCount, maxErrorsCount)
 		require.NoError(t, err)
 
 		require.Equal(t, int32(tasksCount), runTasksCount, "not all tasks were completed")
 		require.LessOrEqual(t, runTasksCount, int32(workersCount), "extra tasks were started")
 	})
+}
+
+func TestRunForEdgeCases(t *testing.T) {
+	defer goleak.VerifyNone(t)
 
 	t.Run("empty tasks", func(t *testing.T) {
 		tasksCount := 0
 		tasks := make([]Task, 0, tasksCount)
 
 		workersCount := 10
-		maxErrorsCount := 0
+		maxErrorsCount := 1
 		err := Run(tasks, workersCount, maxErrorsCount)
 		require.NoError(t, err)
 	})
@@ -139,10 +143,87 @@ func TestRun(t *testing.T) {
 		}
 
 		workersCount := 0
-		maxErrorsCount := 0
+		maxErrorsCount := 1
 		err := Run(tasks, workersCount, maxErrorsCount)
 		require.NoError(t, err)
 
 		require.Equal(t, int32(workersCount), runTasksCount, "no tasks were started")
+	})
+
+	t.Run("empty maxErrorsCount", func(t *testing.T) {
+		tasksCount := 10
+		tasks := make([]Task, 0, tasksCount)
+
+		var runTasksCount int32
+
+		for i := 0; i < tasksCount; i++ {
+			tasks = append(tasks, func() error {
+				time.Sleep(time.Millisecond * time.Duration(rand.Intn(100)))
+				atomic.AddInt32(&runTasksCount, 1)
+				return nil
+			})
+		}
+
+		workersCount := 5
+		maxErrorsCount := 0
+		err := Run(tasks, workersCount, maxErrorsCount)
+
+		require.Equal(t, int32(workersCount), runTasksCount, "excessive tasks were started")
+		require.Truef(t, errors.Is(err, ErrErrorsLimitExceeded), "actual err - %v", err)
+	})
+
+	t.Run("negative maxErrorsCount", func(t *testing.T) {
+		tasksCount := 10
+		tasks := make([]Task, 0, tasksCount)
+
+		var runTasksCount int32
+
+		for i := 0; i < tasksCount; i++ {
+			tasks = append(tasks, func() error {
+				time.Sleep(time.Millisecond * time.Duration(rand.Intn(100)))
+				atomic.AddInt32(&runTasksCount, 1)
+				return nil
+			})
+		}
+
+		workersCount := 5
+		maxErrorsCount := -1
+		err := Run(tasks, workersCount, maxErrorsCount)
+
+		require.Equal(t, int32(workersCount), runTasksCount, "excessive tasks were started")
+		require.Truef(t, errors.Is(err, ErrErrorsLimitExceeded), "actual err - %v", err)
+	})
+}
+
+func TestRunConcurrency(t *testing.T) {
+	defer goleak.VerifyNone(t)
+
+	t.Run("test concurrency without Sleep", func(t *testing.T) {
+		tasksCount := 5
+		tasks := make([]Task, 0, tasksCount)
+
+		idxCh := make(chan int, tasksCount)
+		for i := 0; i < tasksCount; i++ {
+			idx := i
+			tasks = append(tasks, func() error {
+				idxCh <- idx
+				return nil
+			})
+		}
+
+		workersCount := 5
+		maxErrorsCount := 1
+		err := Run(tasks, workersCount, maxErrorsCount)
+
+		outOfOrder := false
+		for i := 0; i < tasksCount; i++ {
+			idx := <-idxCh
+			if idx != i {
+				outOfOrder = true
+				break
+			}
+		}
+
+		require.True(t, outOfOrder, "concurrent tasks should run out of linear order", err)
 	})
 }

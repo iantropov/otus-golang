@@ -10,14 +10,10 @@ type Task func() error
 
 // Run starts tasks in n goroutines and stops its work when receiving m errors from tasks.
 func Run(tasks []Task, n, m int) error {
-	okChannel := make(chan bool)
+	okChannel := make(chan bool, n)
 	errorsCounter := 0
 	runningTasks := 0
 	tasksPointer := 0
-
-	if m < 0 {
-		m = 0
-	}
 
 	for i := 0; i < n && tasksPointer < len(tasks); i++ {
 		go doTask(tasks[tasksPointer], okChannel)
@@ -30,28 +26,30 @@ func Run(tasks []Task, n, m int) error {
 	}
 
 	var err error
-	for isFinished := false; !isFinished; {
-		select {
-		case ok := <-okChannel:
-			if !ok {
-				errorsCounter++
-			}
+	if m <= 0 {
+		m = -1
+		err = ErrErrorsLimitExceeded
+	}
 
-			if errorsCounter > m {
-				err = ErrErrorsLimitExceeded
-			}
+	for {
+		ok := <-okChannel
+		if !ok {
+			errorsCounter++
+		}
 
-			runningTasks--
-			if runningTasks == 0 && (tasksPointer == len(tasks) || errorsCounter > m) {
-				isFinished = true
-				break
-			}
+		if err == nil && errorsCounter > m {
+			err = ErrErrorsLimitExceeded
+		}
 
-			if runningTasks < n && errorsCounter <= m && tasksPointer < len(tasks) {
-				go doTask(tasks[tasksPointer], okChannel)
-				tasksPointer++
-				runningTasks++
-			}
+		runningTasks--
+		if runningTasks == 0 && (tasksPointer == len(tasks) || errorsCounter > m) {
+			break
+		}
+
+		if runningTasks < n && errorsCounter <= m && tasksPointer < len(tasks) {
+			go doTask(tasks[tasksPointer], okChannel)
+			tasksPointer++
+			runningTasks++
 		}
 	}
 
