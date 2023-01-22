@@ -176,7 +176,7 @@ func TestRunConcurrency(t *testing.T) {
 	defer goleak.VerifyNone(t)
 
 	t.Run("test concurrency without Sleep", func(t *testing.T) {
-		tasksCount := 100
+		tasksCount := 1000
 		tasks := make([]Task, 0, tasksCount)
 
 		idxCh := make(chan int, tasksCount)
