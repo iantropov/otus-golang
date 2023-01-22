@@ -29,7 +29,7 @@ func Run(tasks []Task, n, m int) error {
 
 	for i := 0; i < n; i++ {
 		wg.Add(1)
-		go worker(i, taskChannel, okChannel, stopChannel, &wg)
+		go worker(taskChannel, okChannel, stopChannel, &wg)
 	}
 
 	var err error
@@ -59,7 +59,7 @@ func Run(tasks []Task, n, m int) error {
 	return err
 }
 
-func worker(i int, taskChannel <-chan Task, okChannel chan<- bool, stopChannel <-chan struct{}, wg *sync.WaitGroup) {
+func worker(taskChannel <-chan Task, okChannel chan<- bool, stopChannel <-chan struct{}, wg *sync.WaitGroup) {
 	for {
 		select {
 		case <-stopChannel:
