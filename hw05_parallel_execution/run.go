@@ -13,7 +13,7 @@ type Task func() error
 func Run(tasks []Task, n, m int) error {
 	okChannel := make(chan bool, len(tasks))
 	taskChannel := make(chan Task, len(tasks))
-	stopChannel := make(chan struct{})
+	stopChannel := make(chan struct{}, n)
 	wg := sync.WaitGroup{}
 
 	errorsCounter := 0
@@ -26,6 +26,7 @@ func Run(tasks []Task, n, m int) error {
 	for _, task := range tasks {
 		taskChannel <- task
 	}
+	close(taskChannel)
 
 	for i := 0; i < n; i++ {
 		wg.Add(1)
@@ -56,6 +57,9 @@ func Run(tasks []Task, n, m int) error {
 
 	wg.Wait()
 
+	close(okChannel)
+	close(stopChannel)
+
 	return err
 }
 
@@ -68,9 +72,17 @@ func worker(taskChannel <-chan Task, okChannel chan<- bool, stopChannel <-chan s
 		default:
 		}
 		select {
+		case <-stopChannel:
+			wg.Done()
+			return
 		case task := <-taskChannel:
-			err := task()
-			okChannel <- err == nil
+			if task != nil {
+				err := task()
+				okChannel <- err == nil
+			} else {
+				wg.Done()
+				return
+			}
 		default:
 			wg.Done()
 			return
