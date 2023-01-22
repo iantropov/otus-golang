@@ -15,7 +15,7 @@ import (
 func TestRun(t *testing.T) {
 	defer goleak.VerifyNone(t)
 
-	t.Run("if were errors in first M tasks, than finished not more N+M tasks", func(t *testing.T) {
+	t.Run("if were errors in first M tasks, than finished not more N+M tasks (m > n)", func(t *testing.T) {
 		tasksCount := 50
 		tasks := make([]Task, 0, tasksCount)
 
@@ -32,6 +32,29 @@ func TestRun(t *testing.T) {
 
 		workersCount := 10
 		maxErrorsCount := 23
+		err := Run(tasks, workersCount, maxErrorsCount)
+
+		require.Truef(t, errors.Is(err, ErrErrorsLimitExceeded), "actual err - %v", err)
+		require.LessOrEqual(t, runTasksCount, int32(workersCount+maxErrorsCount), "extra tasks were started")
+	})
+
+	t.Run("if were errors in first M tasks, than finished not more N+M tasks (m < n)", func(t *testing.T) {
+		tasksCount := 50
+		tasks := make([]Task, 0, tasksCount)
+
+		var runTasksCount int32
+
+		for i := 0; i < tasksCount; i++ {
+			err := fmt.Errorf("error from task %d", i)
+			tasks = append(tasks, func() error {
+				time.Sleep(time.Millisecond * time.Duration(rand.Intn(100)))
+				atomic.AddInt32(&runTasksCount, 1)
+				return err
+			})
+		}
+
+		workersCount := 20
+		maxErrorsCount := 13
 		err := Run(tasks, workersCount, maxErrorsCount)
 
 		require.Truef(t, errors.Is(err, ErrErrorsLimitExceeded), "actual err - %v", err)
@@ -146,7 +169,7 @@ func TestRunForEdgeCases(t *testing.T) {
 		err := Run(tasks, workersCount, maxErrorsCount)
 
 		require.Equal(t, int32(tasksCount), runTasksCount, "excessive tasks were started")
-		require.Truef(t, errors.Is(err, ErrErrorsLimitExceeded), "actual err - %v", err)
+		require.Truef(t, errors.Is(err, nil), "actual err - %v", err)
 	})
 
 	t.Run("negative maxErrorsCount", func(t *testing.T) {
@@ -168,7 +191,7 @@ func TestRunForEdgeCases(t *testing.T) {
 		err := Run(tasks, workersCount, maxErrorsCount)
 
 		require.Equal(t, int32(tasksCount), runTasksCount, "excessive tasks were started")
-		require.Truef(t, errors.Is(err, ErrErrorsLimitExceeded), "actual err - %v", err)
+		require.Truef(t, errors.Is(err, nil), "actual err - %v", err)
 	})
 }
 

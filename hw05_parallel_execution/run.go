@@ -13,30 +13,28 @@ type Task func() error
 func Run(tasks []Task, n, m int) error {
 	okChannel := make(chan bool, n)
 	taskChannel := make(chan Task, len(tasks))
-	stopChannel := make(chan struct{}, n)
 	wg := sync.WaitGroup{}
 
 	errorsCounter := 0
 	finishedCounter := 0
+	tasksPointer := 0
 
 	if n == 0 || len(tasks) == 0 {
 		return nil
 	}
-
-	for _, task := range tasks {
-		taskChannel <- task
+	if m > n {
+		m = n
 	}
-	close(taskChannel)
 
+	for ; tasksPointer < n && tasksPointer < len(tasks); tasksPointer++ {
+		taskChannel <- tasks[tasksPointer]
+	}
 	for i := 0; i < n; i++ {
 		wg.Add(1)
-		go worker(taskChannel, okChannel, stopChannel, &wg)
+		go worker(taskChannel, okChannel, &wg)
 	}
 
 	var err error
-	if m <= 0 {
-		err = ErrErrorsLimitExceeded
-	}
 	for {
 		ok := <-okChannel
 		if !ok && m > 0 {
@@ -46,42 +44,34 @@ func Run(tasks []Task, n, m int) error {
 
 		if m > 0 && errorsCounter >= m {
 			err = ErrErrorsLimitExceeded
-			for i := 0; i < n; i++ {
-				stopChannel <- struct{}{}
-			}
 			break
 		} else if finishedCounter == len(tasks) {
 			break
 		}
+
+		if tasksPointer < len(tasks) {
+			taskChannel <- tasks[tasksPointer]
+			tasksPointer++
+		}
 	}
 
+	close(taskChannel)
 	wg.Wait()
-
 	close(okChannel)
-	close(stopChannel)
-
 	return err
 }
 
-func worker(taskChannel <-chan Task, okChannel chan<- bool, stopChannel <-chan struct{}, wg *sync.WaitGroup) {
+func worker(taskChannel <-chan Task, okChannel chan<- bool, wg *sync.WaitGroup) {
+	defer wg.Done()
+
 	for {
-		select {
-		case <-stopChannel:
-			wg.Done()
+		task := <-taskChannel
+		if task == nil {
 			return
-		default:
 		}
-		select {
-		case task := <-taskChannel:
-			if task != nil {
-				err := task()
-				okChannel <- err == nil
-			} else {
-				wg.Done()
-				return
-			}
-		default:
-			wg.Done()
+		err := task()
+		okChannel <- err == nil
+		if err != nil {
 			return
 		}
 	}
