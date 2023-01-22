@@ -11,7 +11,7 @@ type Task func() error
 
 // Run starts tasks in n goroutines and stops its work when receiving m errors from tasks.
 func Run(tasks []Task, n, m int) error {
-	okChannel := make(chan bool, len(tasks))
+	okChannel := make(chan bool, n)
 	taskChannel := make(chan Task, len(tasks))
 	stopChannel := make(chan struct{}, n)
 	wg := sync.WaitGroup{}
@@ -72,9 +72,6 @@ func worker(taskChannel <-chan Task, okChannel chan<- bool, stopChannel <-chan s
 		default:
 		}
 		select {
-		case <-stopChannel:
-			wg.Done()
-			return
 		case task := <-taskChannel:
 			if task != nil {
 				err := task()
