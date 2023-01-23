@@ -1,6 +1,7 @@
 package hw05parallelexecution
 
 import (
+	"context"
 	"errors"
 	"sync"
 )
@@ -22,16 +23,15 @@ func Run(tasks []Task, n, m int) error {
 	if n == 0 || len(tasks) == 0 {
 		return nil
 	}
-	if m > n {
-		m = n
-	}
 
 	for ; tasksPointer < n && tasksPointer < len(tasks); tasksPointer++ {
 		taskChannel <- tasks[tasksPointer]
 	}
+
+	ctx, cancel := context.WithCancel(context.Background())
 	for i := 0; i < n; i++ {
 		wg.Add(1)
-		go worker(taskChannel, okChannel, &wg)
+		go worker(ctx, taskChannel, okChannel, &wg)
 	}
 
 	var err error
@@ -54,23 +54,28 @@ func Run(tasks []Task, n, m int) error {
 		}
 	}
 
+	cancel()
 	close(taskChannel)
 	wg.Wait()
 	close(okChannel)
 	return err
 }
 
-func worker(taskChannel <-chan Task, okChannel chan<- bool, wg *sync.WaitGroup) {
+func worker(ctx context.Context, taskChannel <-chan Task, okChannel chan<- bool, wg *sync.WaitGroup) {
 	defer wg.Done()
 
-	for task := range taskChannel {
-		if task == nil {
+	for {
+		select {
+		case <-ctx.Done():
 			return
-		}
-		err := task()
-		okChannel <- err == nil
-		if err != nil {
-			return
+		case task := <-taskChannel:
+			{
+				if task == nil {
+					return
+				}
+				err := task()
+				okChannel <- err == nil
+			}
 		}
 	}
 }
