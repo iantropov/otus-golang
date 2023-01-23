@@ -35,8 +35,7 @@ func Run(tasks []Task, n, m int) error {
 	}
 
 	var err error
-	for {
-		ok := <-okChannel
+	for ok := range okChannel {
 		if !ok && m > 0 {
 			errorsCounter++
 		}
@@ -64,8 +63,7 @@ func Run(tasks []Task, n, m int) error {
 func worker(taskChannel <-chan Task, okChannel chan<- bool, wg *sync.WaitGroup) {
 	defer wg.Done()
 
-	for {
-		task := <-taskChannel
+	for task := range taskChannel {
 		if task == nil {
 			return
 		}
