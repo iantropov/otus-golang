@@ -20,32 +20,49 @@ func ExecutePipeline(in In, done In, stages ...Stage) Out {
 
 	counter := 0
 	outs := make([]Out, 0)
+	isDone := false
+	isClosedIn := false
+
+	// myClose := make(Out)
+
 	go func() {
 		defer wg.Done()
 		for {
-			select {
-			case vIn, ok := <-in:
-				fmt.Println("Received VALUE #", counter, ":", vIn)
-				if !ok {
-					fmt.Println("Received CLOSED")
+			if !isClosedIn {
+				select {
+				case vIn, ok := <-in:
+					fmt.Println("Received VALUE #", counter, ":", vIn)
+					if !ok {
+						isClosedIn = true
+						fmt.Println("Received CLOSED")
+						break
+					}
+
+					wg.Add(1)
+					nextOut := make(Bi, 1)
+					outs = append(outs, nextOut)
+					go func(counter int, out Bi) {
+						defer wg.Done()
+						nextIn := make(Bi, 1)
+						nextIn <- vIn
+						fmt.Println("Send VALUE #", counter, "into the pipe (", vIn, ")")
+						vOut := passStages(nextIn, stages)
+						fmt.Println("Recevied RESULT #", counter, "from the pipe (", vOut, ")")
+						out <- vOut
+					}(counter, nextOut)
+					counter++
+				case <-done:
+					fmt.Println("Received DONE")
+					isDone = true
 					return
 				}
-
-				wg.Add(1)
-				nextOut := make(Bi, 1)
-				outs = append(outs, nextOut)
-				go func(counter int, out Bi) {
-					defer wg.Done()
-					nextIn := make(Bi, 1)
-					nextIn <- vIn
-					fmt.Println("Send VALUE #", counter, "into the pipe (", vIn, ")")
-					vOut := passStages(nextIn, stages)
-					fmt.Println("Recevied RESULT #", counter, "from the pipe (", vOut, ")")
-					out <- vOut
-				}(counter, nextOut)
-				counter++
-			case <-done:
-				return
+			} else {
+				select {
+				case <-done:
+					fmt.Println("Received DONE2")
+					isDone = true
+					return
+				}
 			}
 		}
 	}()
@@ -53,8 +70,10 @@ func ExecutePipeline(in In, done In, stages ...Stage) Out {
 	go func() {
 		wg.Wait()
 		fmt.Println("READY TO OUTPUT RESULTS")
-		for _, nextOut := range outs {
-			out <- <-nextOut
+		if !isDone {
+			for _, nextOut := range outs {
+				out <- <-nextOut
+			}
 		}
 		close(out)
 	}()
