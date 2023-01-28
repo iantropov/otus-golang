@@ -39,6 +39,7 @@ func TestPipeline(t *testing.T) {
 	t.Run("simple case", func(t *testing.T) {
 		in := make(Bi)
 		data := []int{1, 2, 3, 4, 5}
+		// data := []int{1}
 
 		go func() {
 			for _, v := range data {

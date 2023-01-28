@@ -12,29 +12,34 @@ type (
 )
 
 type Stage func(in In) (out Out)
+type StageWithDone func(in In, done In) (out Out)
 
 func ExecutePipeline(in In, done In, stages ...Stage) Out {
 	out := make(Bi)
 	wg := sync.WaitGroup{}
 	wg.Add(1)
-
+	terminate := make(chan struct{})
 	counter := 0
 	outs := make([]Out, 0)
 	isDone := false
-	isClosedIn := false
-
+	isClosed := false
 	// myClose := make(Out)
 
+	stagesWithDone := make([]Stage, 0, len(stages))
+	for i := 0; i < len(stages); i++ {
+		stagesWithDone = append(stagesWithDone, stageWithDone(done, stages[i]))
+	}
+
 	go func() {
-		defer wg.Done()
 		for {
-			if !isClosedIn {
+			if !isClosed {
 				select {
-				case vIn, ok := <-in:
+				case vIn := <-in:
 					fmt.Println("Received VALUE #", counter, ":", vIn)
-					if !ok {
-						isClosedIn = true
+					if vIn == nil {
 						fmt.Println("Received CLOSED")
+						isClosed = true
+						wg.Done()
 						break
 					}
 
@@ -46,9 +51,13 @@ func ExecutePipeline(in In, done In, stages ...Stage) Out {
 						nextIn := make(Bi, 1)
 						nextIn <- vIn
 						fmt.Println("Send VALUE #", counter, "into the pipe (", vIn, ")")
-						vOut := passStages(nextIn, stages)
+						vOut := passStages(nextIn, stagesWithDone)
 						fmt.Println("Recevied RESULT #", counter, "from the pipe (", vOut, ")")
-						out <- vOut
+						if vOut == nil {
+							fmt.Println("Received CLOSED RESULT")
+						} else {
+							out <- vOut
+						}
 					}(counter, nextOut)
 					counter++
 				case <-done:
@@ -58,6 +67,8 @@ func ExecutePipeline(in In, done In, stages ...Stage) Out {
 				}
 			} else {
 				select {
+				case <-terminate:
+					return
 				case <-done:
 					fmt.Println("Received DONE2")
 					isDone = true
@@ -75,6 +86,7 @@ func ExecutePipeline(in In, done In, stages ...Stage) Out {
 				out <- <-nextOut
 			}
 		}
+		close(terminate)
 		close(out)
 	}()
 
@@ -89,4 +101,36 @@ func passStages(in In, stages []Stage) interface{} {
 		nextIn = lastOut
 	}
 	return <-lastOut
+}
+
+func stageWithDone(done In, stage Stage) Stage {
+	return func(in In) (out Out) {
+		stageIn := make(Bi)
+
+		go func() {
+			defer func() {
+				fmt.Println("CLOSED INTER CHANNEL")
+				close(stageIn)
+			}()
+
+			fmt.Println("STARTED INTER CHANNEL")
+
+			for {
+				select {
+				case vIn := <-in:
+					fmt.Println("INTER VALUE", vIn)
+					if vIn == nil {
+						fmt.Println("Received INTER CLOSED")
+						return
+					}
+					stageIn <- vIn
+				case <-done:
+					fmt.Println("INTER DONE")
+					return
+				}
+			}
+		}()
+
+		return stage(stageIn)
+	}
 }
