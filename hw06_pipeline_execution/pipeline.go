@@ -19,14 +19,14 @@ func ExecutePipeline(in In, done In, stages ...Stage) Out {
 		return out
 	}
 
-	terminate := make(chan struct{})
+	isDone := make(chan struct{}, 1)
 	outs := make([]Bi, 0)
 
-	isDone := false
-	isClosed := false
-
-	wg := sync.WaitGroup{}
-	wg.Add(1)
+	wgPipeline := sync.WaitGroup{}
+	wgMaster := sync.WaitGroup{}
+	wgWorkers := sync.WaitGroup{}
+	wgMaster.Add(1)
+	wgPipeline.Add(1)
 
 	stagesWithDone := make([]Stage, 0, len(stages))
 	for i := 0; i < len(stages); i++ {
@@ -34,59 +34,56 @@ func ExecutePipeline(in In, done In, stages ...Stage) Out {
 	}
 
 	go func() {
-		for {
-			if !isClosed {
-				select {
-				case vIn := <-in:
-					if vIn == nil {
-						isClosed = true
-						wg.Done()
-						break
-					}
+		defer wgMaster.Done()
+		for vIn := range in {
+			nextOut := make(Bi, 1)
+			outs = append(outs, nextOut)
 
-					nextOut := make(Bi, 1)
-					outs = append(outs, nextOut)
-
-					wg.Add(1)
-					go startPipelineWithValue(vIn, stagesWithDone, nextOut, &wg)
-				case <-done:
-					isDone = true
-					return
-				}
-			} else {
-				select {
-				case <-terminate:
-					return
-				case <-done:
-					isDone = true
-					return
-				}
-			}
+			wgWorkers.Add(1)
+			go pipelineWorker(vIn, stagesWithDone, nextOut, &wgWorkers)
 		}
 	}()
 
 	go func() {
-		wg.Wait()
-		if !isDone {
-			for _, nextOut := range outs {
-				out <- <-nextOut
-				close(nextOut)
-			}
+		wgMaster.Wait()
+		wgWorkers.Wait()
+		select {
+		case <-done:
+			isDone <- struct{}{}
+		default:
 		}
-		close(terminate)
-		close(out)
+		wgPipeline.Done()
+	}()
+
+	go func() {
+		defer func() {
+			close(isDone)
+			close(out)
+		}()
+
+		wgPipeline.Wait()
+
+		select {
+		case <-isDone:
+			return
+		default:
+		}
+
+		for _, nextOut := range outs {
+			out <- <-nextOut
+			close(nextOut)
+		}
 	}()
 
 	return out
 }
 
-func startPipelineWithValue(vIn interface{}, stages []Stage, out Bi, wg *sync.WaitGroup) {
+func pipelineWorker(vIn interface{}, stages []Stage, out Bi, wg *sync.WaitGroup) {
 	defer wg.Done()
 	nextIn := make(Bi, 1)
 	nextIn <- vIn
 	vOut := passStages(nextIn, stages)
-	if vOut == nil {
-	} else {
+	if vOut != nil {
 		out <- vOut
 	}
 }
