@@ -39,7 +39,6 @@ func TestPipeline(t *testing.T) {
 	t.Run("simple case", func(t *testing.T) {
 		in := make(Bi)
 		data := []int{1, 2, 3, 4, 5}
-		// data := []int{1}
 
 		go func() {
 			for _, v := range data {
@@ -90,5 +89,17 @@ func TestPipeline(t *testing.T) {
 
 		require.Len(t, result, 0)
 		require.Less(t, int64(elapsed), int64(abortDur)+int64(fault))
+	})
+
+	t.Run("case with empty in", func(t *testing.T) {
+		result := make([]string, 0, 10)
+		start := time.Now()
+		for s := range ExecutePipeline(nil, nil, stages...) {
+			result = append(result, s.(string))
+		}
+		elapsed := time.Since(start)
+
+		require.Len(t, result, 0)
+		require.Less(t, int64(elapsed), int64(fault))
 	})
 }

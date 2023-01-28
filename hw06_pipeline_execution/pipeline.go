@@ -1,7 +1,6 @@
 package hw06pipelineexecution
 
 import (
-	"fmt"
 	"sync"
 )
 
@@ -12,18 +11,22 @@ type (
 )
 
 type Stage func(in In) (out Out)
-type StageWithDone func(in In, done In) (out Out)
 
 func ExecutePipeline(in In, done In, stages ...Stage) Out {
 	out := make(Bi)
-	wg := sync.WaitGroup{}
-	wg.Add(1)
+	if in == nil {
+		close(out)
+		return out
+	}
+
 	terminate := make(chan struct{})
-	counter := 0
-	outs := make([]Out, 0)
+	outs := make([]Bi, 0)
+
 	isDone := false
 	isClosed := false
-	// myClose := make(Out)
+
+	wg := sync.WaitGroup{}
+	wg.Add(1)
 
 	stagesWithDone := make([]Stage, 0, len(stages))
 	for i := 0; i < len(stages); i++ {
@@ -35,33 +38,18 @@ func ExecutePipeline(in In, done In, stages ...Stage) Out {
 			if !isClosed {
 				select {
 				case vIn := <-in:
-					fmt.Println("Received VALUE #", counter, ":", vIn)
 					if vIn == nil {
-						fmt.Println("Received CLOSED")
 						isClosed = true
 						wg.Done()
 						break
 					}
 
-					wg.Add(1)
 					nextOut := make(Bi, 1)
 					outs = append(outs, nextOut)
-					go func(counter int, out Bi) {
-						defer wg.Done()
-						nextIn := make(Bi, 1)
-						nextIn <- vIn
-						fmt.Println("Send VALUE #", counter, "into the pipe (", vIn, ")")
-						vOut := passStages(nextIn, stagesWithDone)
-						fmt.Println("Recevied RESULT #", counter, "from the pipe (", vOut, ")")
-						if vOut == nil {
-							fmt.Println("Received CLOSED RESULT")
-						} else {
-							out <- vOut
-						}
-					}(counter, nextOut)
-					counter++
+
+					wg.Add(1)
+					go startPipelineWithValue(vIn, stagesWithDone, nextOut, &wg)
 				case <-done:
-					fmt.Println("Received DONE")
 					isDone = true
 					return
 				}
@@ -70,7 +58,6 @@ func ExecutePipeline(in In, done In, stages ...Stage) Out {
 				case <-terminate:
 					return
 				case <-done:
-					fmt.Println("Received DONE2")
 					isDone = true
 					return
 				}
@@ -80,10 +67,10 @@ func ExecutePipeline(in In, done In, stages ...Stage) Out {
 
 	go func() {
 		wg.Wait()
-		fmt.Println("READY TO OUTPUT RESULTS")
 		if !isDone {
 			for _, nextOut := range outs {
 				out <- <-nextOut
+				close(nextOut)
 			}
 		}
 		close(terminate)
@@ -91,6 +78,17 @@ func ExecutePipeline(in In, done In, stages ...Stage) Out {
 	}()
 
 	return out
+}
+
+func startPipelineWithValue(vIn interface{}, stages []Stage, out Bi, wg *sync.WaitGroup) {
+	defer wg.Done()
+	nextIn := make(Bi, 1)
+	nextIn <- vIn
+	vOut := passStages(nextIn, stages)
+	if vOut == nil {
+	} else {
+		out <- vOut
+	}
 }
 
 func passStages(in In, stages []Stage) interface{} {
@@ -109,23 +107,17 @@ func stageWithDone(done In, stage Stage) Stage {
 
 		go func() {
 			defer func() {
-				fmt.Println("CLOSED INTER CHANNEL")
 				close(stageIn)
 			}()
-
-			fmt.Println("STARTED INTER CHANNEL")
 
 			for {
 				select {
 				case vIn := <-in:
-					fmt.Println("INTER VALUE", vIn)
 					if vIn == nil {
-						fmt.Println("Received INTER CLOSED")
 						return
 					}
 					stageIn <- vIn
 				case <-done:
-					fmt.Println("INTER DONE")
 					return
 				}
 			}
