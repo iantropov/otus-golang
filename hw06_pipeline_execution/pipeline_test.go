@@ -100,13 +100,26 @@ func TestPipeline(t *testing.T) {
 		require.Less(t, int64(elapsed), int64(fault))
 	})
 
+	t.Run("case without stages", func(t *testing.T) {
+		in := make(Bi)
+		done := make(Bi)
+		defer close(in)
+		defer close(done)
+		start := time.Now()
+		result := ExecutePipeline(in, done)
+		elapsed := time.Since(start)
+
+		require.Equal(t, (<-chan interface{})(nil), result)
+		require.Less(t, int64(elapsed), int64(fault))
+	})
+
 	t.Run("case with empty stages", func(t *testing.T) {
 		in := make(Bi)
 		done := make(Bi)
 		defer close(in)
 		defer close(done)
 		start := time.Now()
-		result := ExecutePipeline(in, done, nil)
+		result := ExecutePipeline(in, done, nil, nil)
 		elapsed := time.Since(start)
 
 		require.Equal(t, (<-chan interface{})(nil), result)
