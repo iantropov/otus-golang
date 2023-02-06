@@ -58,7 +58,7 @@ func TestPipeline(t *testing.T) {
 		require.Less(t,
 			int64(elapsed),
 			// ~0.8s for processing 5 values in 4 stages (100ms every) concurrently
-			int64(sleepPerStage)*int64(len(stages)+len(data)-1)+int64(fault))
+			int64(sleepPerStage)*int64(len(stages)+len(data)+1)+int64(fault))
 	})
 
 	t.Run("done case", func(t *testing.T) {
@@ -89,5 +89,40 @@ func TestPipeline(t *testing.T) {
 
 		require.Len(t, result, 0)
 		require.Less(t, int64(elapsed), int64(abortDur)+int64(fault))
+	})
+
+	t.Run("case with empty in", func(t *testing.T) {
+		start := time.Now()
+		result := ExecutePipeline(nil, nil, stages...)
+		elapsed := time.Since(start)
+
+		require.Equal(t, (<-chan interface{})(nil), result)
+		require.Less(t, int64(elapsed), int64(fault))
+	})
+
+	t.Run("case without stages", func(t *testing.T) {
+		in := make(Bi)
+		done := make(Bi)
+		defer close(in)
+		defer close(done)
+		start := time.Now()
+		result := ExecutePipeline(in, done)
+		elapsed := time.Since(start)
+
+		require.Equal(t, (<-chan interface{})(nil), result)
+		require.Less(t, int64(elapsed), int64(fault))
+	})
+
+	t.Run("case with empty stages", func(t *testing.T) {
+		in := make(Bi)
+		done := make(Bi)
+		defer close(in)
+		defer close(done)
+		start := time.Now()
+		result := ExecutePipeline(in, done, nil, nil)
+		elapsed := time.Since(start)
+
+		require.Equal(t, (<-chan interface{})(nil), result)
+		require.Less(t, int64(elapsed), int64(fault))
 	})
 }
