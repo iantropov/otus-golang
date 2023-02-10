@@ -8,8 +8,6 @@ import (
 	"github.com/cheggaaa/pb/v3"
 )
 
-const CHUNK_SIZE = 102400
-
 var (
 	ErrUnsupportedFile       = errors.New("unsupported file")
 	ErrOffsetExceedsFileSize = errors.New("offset exceeds file size")
@@ -38,9 +36,8 @@ func Copy(fromPath, toPath string, offset, limit int64) error {
 	if err != nil {
 		if os.IsNotExist(err) {
 			return ErrFromFileNotFound
-		} else {
-			return err
 		}
+		return err
 	}
 	size := fileStat.Size()
 	if size == 0 {
@@ -68,9 +65,15 @@ func Copy(fromPath, toPath string, offset, limit int64) error {
 		limit = size - offset
 	}
 
+	return copyFileContent(inputFile, outputFile, offset, limit)
+}
+
+func copyFileContent(inputFile, outputFile *os.File, offset, limit int64) error {
+	const ChunkSize = 102400
+
 	bufferSize := limit
-	if bufferSize > CHUNK_SIZE {
-		bufferSize = CHUNK_SIZE
+	if bufferSize > ChunkSize {
+		bufferSize = ChunkSize
 	}
 	buffer := make([]byte, bufferSize)
 
@@ -102,5 +105,6 @@ func Copy(fromPath, toPath string, offset, limit int64) error {
 		}
 	}
 	bar.Finish()
+
 	return nil
 }

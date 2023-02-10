@@ -19,7 +19,14 @@ func TestCopy(t *testing.T) {
 		{title: "negative LIMIT", from: "asd", to: "asd", offset: 0, limit: -1, err: ErrNegativeLimit},
 		{title: "unsupported file FROM", from: "/dev/urandom", to: "asd", offset: 0, limit: 0, err: ErrUnsupportedFile},
 		{title: "file FROM not found", from: "/asdasdasd", to: "asd", offset: 0, limit: 0, err: ErrFromFileNotFound},
-		{title: "OFFSET exceeds file size", from: "./testdata/out_offset0_limit10.txt", to: "asd", offset: 11, limit: 0, err: ErrOffsetExceedsFileSize},
+		{
+			title:  "OFFSET exceeds file size",
+			from:   "./testdata/out_offset0_limit10.txt",
+			to:     "asd",
+			offset: 11,
+			limit:  0,
+			err:    ErrOffsetExceedsFileSize,
+		},
 	}
 
 	for _, tc := range tests {
