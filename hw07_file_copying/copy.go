@@ -11,20 +11,32 @@ var (
 	ErrOffsetExceedsFileSize = errors.New("offset exceeds file size")
 	ErrEmptyFromFileName     = errors.New("empty from filename")
 	ErrEmptyToFileName       = errors.New("empty to filename")
+	ErrNegativeOffset        = errors.New("negative offset")
+	ErrNegativeLimit         = errors.New("negative limit")
 	ErrFromFileNotFound      = errors.New("from file not found")
 )
 
 func Copy(fromPath, toPath string, offset, limit int64) error {
-	if from == "" {
+	if fromPath == "" {
 		return ErrEmptyFromFileName
 	}
-	if to == "" {
+	if toPath == "" {
 		return ErrEmptyToFileName
 	}
+	if offset < 0 {
+		return ErrNegativeOffset
+	}
+	if limit < 0 {
+		return ErrNegativeLimit
+	}
 
-	fileStat, err := os.Stat(from)
+	fileStat, err := os.Stat(fromPath)
 	if err != nil {
-		panic(err)
+		if os.IsNotExist(err) {
+			return ErrFromFileNotFound
+		} else {
+			return err
+		}
 	}
 	size := fileStat.Size()
 	if size == 0 {
@@ -35,18 +47,14 @@ func Copy(fromPath, toPath string, offset, limit int64) error {
 	}
 
 	var inputFile *os.File
-	inputFile, err = os.Open(from)
+	inputFile, err = os.Open(fromPath)
 	if err != nil {
-		if os.IsNotExist(err) {
-			return ErrFromFileNotFound
-		} else {
-			return err
-		}
+		return err
 	}
 	defer inputFile.Close()
 
 	var outputFile *os.File
-	outputFile, err = os.OpenFile(to, os.O_RDWR|os.O_CREATE|os.O_TRUNC, fileStat.Mode())
+	outputFile, err = os.OpenFile(toPath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, fileStat.Mode())
 	if err != nil {
 		return err
 	}
