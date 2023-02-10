@@ -2,15 +2,12 @@ package main
 
 import (
 	"flag"
-	"fmt"
 )
 
 var (
 	from, to      string
 	limit, offset int64
 )
-
-const CHUNK_SIZE = 102400
 
 func init() {
 	flag.StringVar(&from, "from", "", "file to read from")
@@ -21,12 +18,6 @@ func init() {
 
 func main() {
 	flag.Parse()
-	// from = "/dev/urandom"
-	// to = "app2"
-	// offset = 10
-	// limit = 20
-	fmt.Printf("FROM: %s, TO: %s, OFFSET: %d, LIMIT: %d\n", from, to, offset, limit)
-
 	err := Copy(from, to, offset, limit)
 	if err != nil {
 		panic(err)

@@ -4,7 +4,11 @@ import (
 	"errors"
 	"io"
 	"os"
+
+	"github.com/cheggaaa/pb/v3"
 )
+
+const CHUNK_SIZE = 102400
 
 var (
 	ErrUnsupportedFile       = errors.New("unsupported file")
@@ -60,8 +64,8 @@ func Copy(fromPath, toPath string, offset, limit int64) error {
 	}
 	defer outputFile.Close()
 
-	if limit == 0 {
-		limit = size
+	if limit == 0 || limit > size-offset {
+		limit = size - offset
 	}
 
 	bufferSize := limit
@@ -70,15 +74,21 @@ func Copy(fromPath, toPath string, offset, limit int64) error {
 	}
 	buffer := make([]byte, bufferSize)
 
+	bar := pb.Start64(limit)
+
 	curPos := offset
-	for curPos < offset+limit {
+	for curPos < limit+offset {
 		read, readErr := inputFile.ReadAt(buffer, curPos)
 		if readErr != nil && readErr != io.EOF {
 			return readErr
 		}
-		if curPos+int64(read) > offset+limit {
-			read = int(offset + limit - curPos)
+		if curPos+int64(read) > limit+offset {
+			read = int(limit + offset - curPos)
 		}
+
+		curPos += int64(read)
+		bar.Add64(int64(read))
+
 		written := 0
 		for written < read {
 			nextWritten, writeErr := outputFile.Write(buffer[written:read])
@@ -90,7 +100,7 @@ func Copy(fromPath, toPath string, offset, limit int64) error {
 		if readErr == io.EOF {
 			break
 		}
-		curPos += int64(read)
 	}
+	bar.Finish()
 	return nil
 }
