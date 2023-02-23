@@ -2,6 +2,7 @@ package hw09structvalidator
 
 import (
 	"encoding/json"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -37,27 +38,63 @@ type (
 	}
 )
 
-func TestValidate(t *testing.T) {
-	err := Validate(Response{Code: 123, Body: "asd"})
-	require.Equal(t, "Code: invalid value", err.Error())
-	// tests := []struct {
-	// 	in          interface{}
-	// 	expectedErr error
-	// }{
-	// 	{
-	// 		// Place your code here.
-	// 	},
-	// 	// ...
-	// 	// Place your code here.
-	// }
+func TestValidateWithInvalidInput(t *testing.T) {
+	tests := []struct {
+		in         interface{}
+		errMessage string
+	}{
+		{
+			in:         Response{Code: 123, Body: "asd"},
+			errMessage: "Code: invalid value",
+		},
+		{
+			in:         App{Version: "123"},
+			errMessage: "Version: invalid value",
+		},
+		{
+			in: User{ID: "123", Name: "name", Age: 10, Email: "asd", Role: "asd", Phones: []string{"asd", "zxc"}},
+			errMessage: "ID: invalid value, " +
+				"Age: invalid value, " +
+				"Email: invalid value, " +
+				"Role: invalid value, " +
+				"Phones: invalid value",
+		},
+	}
 
-	// for i, tt := range tests {
-	// 	t.Run(fmt.Sprintf("case %d", i), func(t *testing.T) {
-	// 		tt := tt
-	// 		t.Parallel()
+	for i, tt := range tests {
+		t.Run(fmt.Sprintf("case %d", i), func(t *testing.T) {
+			tt := tt
+			t.Parallel()
 
-	// 		// Place your code here.
-	// 		_ = tt
-	// 	})
-	// }
+			err := Validate(tt.in)
+			require.EqualError(t, err, tt.errMessage)
+		})
+	}
+}
+
+func TestValidateWithValidInput(t *testing.T) {
+	tests := []interface{}{
+		Response{Code: 200, Body: "asd"},
+		Token{Header: nil, Payload: nil, Signature: nil},
+		App{Version: "12345"},
+		User{
+			ID:     "123456789x123456789x123456789x123456",
+			Name:   "name",
+			Age:    20,
+			Email:  "asd@asd.asd",
+			Role:   "admin",
+			Phones: []string{"123456789x1", "123456789x2"},
+			meta:   nil,
+		},
+	}
+
+	for i, tt := range tests {
+		t.Run(fmt.Sprintf("case %d", i), func(t *testing.T) {
+			tt := tt
+			t.Parallel()
+
+			err := Validate(tt)
+			require.Equal(t, err, nil)
+		})
+	}
 }

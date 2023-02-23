@@ -40,46 +40,49 @@ func Validate(v interface{}) (err error) {
 	validationErrors := make(ValidationErrors, 0)
 	fields := reflect.VisibleFields(reflect.TypeOf(v))
 	for _, field := range fields {
-		fieldValidationErrors, err := validateField(field, v)
+		fieldValidationError, err := validateField(field, v)
 		if err != nil {
 			return err
 		}
-		validationErrors = append(validationErrors, fieldValidationErrors...)
+		if fieldValidationError != nil {
+			validationErrors = append(validationErrors, ValidationError{
+				Field: field.Name,
+				Err:   fieldValidationError,
+			})
+		}
 	}
 
+	if len(validationErrors) == 0 {
+		return nil
+	}
 	return validationErrors
 }
 
-func validateField(field reflect.StructField, v interface{}) (validationErrors ValidationErrors, err error) {
+func validateField(field reflect.StructField, v interface{}) (error, error) {
 	validations, ok := field.Tag.Lookup("validate")
 	if !ok {
-		return validationErrors, nil
+		return nil, nil
 	}
 
 	val := reflect.ValueOf(v)
 	fieldValue := val.FieldByName(field.Name)
-	errors := make([]error, 0)
 	if fieldValue.Kind() == reflect.Slice {
 		for i := 0; i < fieldValue.Len(); i++ {
 			sliceValue := fieldValue.Index(i)
-			nextErrors, err := validateValueByValidations(sliceValue, validations)
-			if err != nil {
-				return validationErrors, err
+			validationError, err := validateValueByValidations(sliceValue, validations)
+			if err != nil || validationError != nil {
+				return validationError, err
 			}
-			errors = append(errors, nextErrors...)
 		}
 	} else {
-		errors, err = validateValueByValidations(fieldValue, validations)
-		if err != nil {
-			return validationErrors, err
-		}
+		validationError, err := validateValueByValidations(fieldValue, validations)
+		return validationError, err
 	}
 
-	return convertToValidationErrors(errors, field), nil
+	return nil, nil
 }
 
-func validateValueByValidations(value reflect.Value, rawValidations string) ([]error, error) {
-	validationErrors := make([]error, 0)
+func validateValueByValidations(value reflect.Value, rawValidations string) (error, error) {
 	validations := strings.Split(rawValidations, "|")
 	for _, validation := range validations {
 		validationError, err := validateValueByValidation(value, validation)
@@ -87,10 +90,10 @@ func validateValueByValidations(value reflect.Value, rawValidations string) ([]e
 			return nil, err
 		}
 		if validationError != nil {
-			validationErrors = append(validationErrors, validationError)
+			return validationError, nil
 		}
 	}
-	return validationErrors, nil
+	return nil, nil
 }
 
 func validateValueByValidation(value reflect.Value, validation string) (error, error) {
@@ -223,15 +226,4 @@ func parseStringValidationN(validation string) ([]string, error) {
 	}
 	stringParts := strings.Split(parts[1], ",")
 	return stringParts, nil
-}
-
-func convertToValidationErrors(errors []error, field reflect.StructField) ValidationErrors {
-	validationErrors := make(ValidationErrors, 0, len(errors))
-	for _, err := range errors {
-		validationErrors = append(validationErrors, ValidationError{
-			Field: field.Name,
-			Err:   err,
-		})
-	}
-	return validationErrors
 }
