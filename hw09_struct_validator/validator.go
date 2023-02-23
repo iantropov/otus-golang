@@ -2,8 +2,8 @@ package hw09structvalidator
 
 import (
 	"errors"
-	"fmt"
 	"reflect"
+	"regexp"
 	"strconv"
 	"strings"
 )
@@ -15,30 +15,42 @@ type ValidationError struct {
 
 type ValidationErrors []ValidationError
 
-func (v ValidationErrors) Error() string {
-	panic("implement me")
+func (validationErrors ValidationErrors) Error() string {
+	builder := strings.Builder{}
+	for i, err := range validationErrors {
+		builder.WriteString(err.Field)
+		builder.WriteString(": ")
+		builder.WriteString(err.Err.Error())
+		if i != len(validationErrors)-1 {
+			builder.WriteString(", ")
+		}
+	}
+	return builder.String()
 }
 
 var (
 	ErrUnsupportedType       = errors.New("unsupported type")
 	ErrUnsupportedValidation = errors.New("unsupported validation")
 	ErrIncorrectValidation   = errors.New("incorrect validation")
+
+	ErrInvalidValue = errors.New("invalid value")
 )
 
 func Validate(v interface{}) (err error) {
 	validationErrors := make(ValidationErrors, 0)
 	fields := reflect.VisibleFields(reflect.TypeOf(v))
 	for _, field := range fields {
-		validationErrors, err = validateField(validationErrors, field, v)
+		fieldValidationErrors, err := validateField(field, v)
 		if err != nil {
 			return err
 		}
+		validationErrors = append(validationErrors, fieldValidationErrors...)
 	}
 
 	return validationErrors
 }
 
-func validateField(validationErrors ValidationErrors, field reflect.StructField, v interface{}) (_ ValidationErrors, err error) {
+func validateField(field reflect.StructField, v interface{}) (validationErrors ValidationErrors, err error) {
 	validations, ok := field.Tag.Lookup("validate")
 	if !ok {
 		return validationErrors, nil
@@ -46,101 +58,180 @@ func validateField(validationErrors ValidationErrors, field reflect.StructField,
 
 	val := reflect.ValueOf(v)
 	fieldValue := val.FieldByName(field.Name)
+	errors := make([]error, 0)
 	if fieldValue.Kind() == reflect.Slice {
 		for i := 0; i < fieldValue.Len(); i++ {
 			sliceValue := fieldValue.Index(i)
-			validationErrors, err = validateValueByValidations(validationErrors, sliceValue, validations)
+			nextErrors, err := validateValueByValidations(sliceValue, validations)
 			if err != nil {
 				return validationErrors, err
 			}
+			errors = append(errors, nextErrors...)
 		}
 	} else {
-		validationErrors, err = validateValueByValidations(validationErrors, fieldValue, validations)
+		errors, err = validateValueByValidations(fieldValue, validations)
 		if err != nil {
 			return validationErrors, err
 		}
 	}
 
-	return validationErrors, nil
+	return convertToValidationErrors(errors, field), nil
 }
 
-func validateValueByValidations(validationErrors ValidationErrors, value reflect.Value, rawValidations string) (ValidationErrors, error) {
+func validateValueByValidations(value reflect.Value, rawValidations string) ([]error, error) {
+	validationErrors := make([]error, 0)
 	validations := strings.Split(rawValidations, "|")
 	for _, validation := range validations {
-		validationError, ok, err := validateValueByValidation(value, validation)
+		validationError, err := validateValueByValidation(value, validation)
 		if err != nil {
-			return validationErrors, err
+			return nil, err
 		}
-		if !ok {
+		if validationError != nil {
 			validationErrors = append(validationErrors, validationError)
 		}
 	}
 	return validationErrors, nil
 }
 
-func validateValueByValidation(value reflect.Value, validation string) (_ ValidationError, res bool, err error) {
-	var validationError ValidationError
+func validateValueByValidation(value reflect.Value, validation string) (error, error) {
 	switch {
 	case value.CanInt():
-		validationError, res, err = validateInt(value.Int(), validation)
+		return validateInt(value.Int(), validation)
 	case value.Kind() == reflect.String:
-		validationError, res, err = validateString(value.String(), validation)
+		return validateString(value.String(), validation)
 	default:
-		return validationError, false, ErrUnsupportedType
+		return nil, ErrUnsupportedType
 	}
-
-	return
 }
 
-func validateInt(val int64, validation string) (ValidationError, bool, error) {
-	var validationError ValidationError
+func validateInt(val int64, validation string) (error, error) {
 	switch {
-	case strings.HasPrefix(validation, "min"):
+	case strings.HasPrefix(validation, "min:"):
 		minValue, err := parseIntValidation1(validation)
 		if err != nil {
-			return validationError, true, err
+			return nil, err
 		}
 		if val >= minValue {
-			return validationError, true, nil
+			return nil, nil
 		}
-		validationError =
+		return ErrInvalidValue, nil
+	case strings.HasPrefix(validation, "max:"):
+		maxValue, err := parseIntValidation1(validation)
+		if err != nil {
+			return nil, err
+		}
+		if val <= maxValue {
+			return nil, nil
+		}
+		return ErrInvalidValue, nil
+	case strings.HasPrefix(validation, "in:"):
+		intValues, err := parseIntValidationN(validation)
+		if err != nil {
+			return nil, err
+		}
+		for _, intValue := range intValues {
+			if intValue == val {
+				return nil, nil
+			}
+		}
+		return ErrInvalidValue, nil
+	default:
+		return nil, ErrUnsupportedValidation
 	}
-	return validationError, true, nil
 }
 
-func validateString(val string, validation string) (ValidationError, bool, error) {
-	var validationError ValidationError
-	return validationError, true, nil
+func validateString(val string, validation string) (error, error) {
+	switch {
+	case strings.HasPrefix(validation, "len:"):
+		lenValue, err := parseIntValidation1(validation)
+		if err != nil {
+			return nil, err
+		}
+		if len(val) == int(lenValue) {
+			return nil, nil
+		}
+		return ErrInvalidValue, nil
+	case strings.HasPrefix(validation, "regexp:"):
+		regexpValue, err := parseStringValidation1(validation)
+		if err != nil {
+			return nil, err
+		}
+		matched, err := regexp.MatchString(regexpValue, val)
+		if err != nil {
+			return nil, ErrIncorrectValidation
+		}
+		if matched {
+			return nil, nil
+		}
+		return ErrInvalidValue, nil
+	case strings.HasPrefix(validation, "in:"):
+		stringValues, err := parseStringValidationN(validation)
+		if err != nil {
+			return nil, err
+		}
+		for _, stringValue := range stringValues {
+			if stringValue == val {
+				return nil, nil
+			}
+		}
+		return ErrInvalidValue, nil
+	default:
+		return nil, ErrUnsupportedValidation
+	}
 }
 
 func parseIntValidation1(validation string) (int64, error) {
-	parts := strings.SplitN(validation, ":", 2)
-	if len(parts) != 2 {
-		return 0, ErrIncorrectValidation
-	}
-	value, err := strconv.ParseInt(parts[1], 10, 64)
+	stringValue, err := parseStringValidation1(validation)
 	if err != nil {
-		return 0, fmt.Errorf("parseIntValidation1: %w", err)
+		return 0, err
+	}
+	value, err := strconv.ParseInt(stringValue, 10, 64)
+	if err != nil {
+		return 0, ErrIncorrectValidation
 	}
 	return value, nil
 }
 
-func parseIntValidation2(validation string) (int64, int64, error) {
+func parseIntValidationN(validation string) ([]int64, error) {
+	stringValues, err := parseStringValidationN(validation)
+	if err != nil {
+		return nil, err
+	}
+	intValues := make([]int64, 0, len(stringValues))
+	for _, stringValue := range stringValues {
+		intValue, err := strconv.ParseInt(stringValue, 10, 64)
+		if err != nil {
+			return nil, ErrIncorrectValidation
+		}
+		intValues = append(intValues, intValue)
+	}
+	return intValues, nil
+}
+
+func parseStringValidation1(validation string) (string, error) {
 	parts := strings.SplitN(validation, ":", 2)
 	if len(parts) != 2 {
-		return 0, 0, ErrIncorrectValidation
+		return "", ErrIncorrectValidation
 	}
-	intParts := strings.SplitN(parts[1], 2)
-	if len(intParts) != 2 {
-		return 0, 0, ErrIncorrectValidation
+	return parts[1], nil
+}
+
+func parseStringValidationN(validation string) ([]string, error) {
+	parts := strings.SplitN(validation, ":", 2)
+	if len(parts) != 2 {
+		return nil, ErrIncorrectValidation
 	}
-	value1, err := strconv.ParseInt(intParts[0], 10, 64)
-	if err != nil {
-		return 0, 0, fmt.Errorf("parseIntValidation2: %w", err)
+	stringParts := strings.Split(parts[1], ",")
+	return stringParts, nil
+}
+
+func convertToValidationErrors(errors []error, field reflect.StructField) ValidationErrors {
+	validationErrors := make(ValidationErrors, 0, len(errors))
+	for _, err := range errors {
+		validationErrors = append(validationErrors, ValidationError{
+			Field: field.Name,
+			Err:   err,
+		})
 	}
-	value2, err := strconv.ParseInt(intParts[1], 10, 64)
-	if err != nil {
-		return 0, 0, fmt.Errorf("parseIntValidation2: %w", err)
-	}
-	return value1, value2, nil
+	return validationErrors
 }

@@ -2,8 +2,9 @@ package hw09structvalidator
 
 import (
 	"encoding/json"
-	"fmt"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 type UserRole string
@@ -37,24 +38,26 @@ type (
 )
 
 func TestValidate(t *testing.T) {
-	tests := []struct {
-		in          interface{}
-		expectedErr error
-	}{
-		{
-			// Place your code here.
-		},
-		// ...
-		// Place your code here.
-	}
+	err := Validate(Response{Code: 123, Body: "asd"})
+	require.Equal(t, "Code: invalid value", err.Error())
+	// tests := []struct {
+	// 	in          interface{}
+	// 	expectedErr error
+	// }{
+	// 	{
+	// 		// Place your code here.
+	// 	},
+	// 	// ...
+	// 	// Place your code here.
+	// }
 
-	for i, tt := range tests {
-		t.Run(fmt.Sprintf("case %d", i), func(t *testing.T) {
-			tt := tt
-			t.Parallel()
+	// for i, tt := range tests {
+	// 	t.Run(fmt.Sprintf("case %d", i), func(t *testing.T) {
+	// 		tt := tt
+	// 		t.Parallel()
 
-			// Place your code here.
-			_ = tt
-		})
-	}
+	// 		// Place your code here.
+	// 		_ = tt
+	// 	})
+	// }
 }
