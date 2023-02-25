@@ -2,6 +2,7 @@ package hw09structvalidator
 
 import (
 	"errors"
+	"fmt"
 	"reflect"
 	"regexp"
 	"strconv"
@@ -14,6 +15,18 @@ type ValidationError struct {
 }
 
 type ValidationErrors []ValidationError
+
+type ValidationResult string
+
+const (
+	Valid              ValidationResult = "ok"
+	Unknown            ValidationResult = "unknown"
+	InvalidWithMinimum ValidationResult = "less than the allowed minimum"
+	InvalidWithMaximum ValidationResult = "more than the allowed maximum"
+	InvalidWithSet     ValidationResult = "isn't element of the set"
+	InvalidWithRegex   ValidationResult = "doesn't match the regex"
+	InvalidWithLen     ValidationResult = "invalid length"
+)
 
 func (validationErrors ValidationErrors) Error() string {
 	builder := strings.Builder{}
@@ -40,14 +53,14 @@ func Validate(v interface{}) (err error) {
 	validationErrors := make(ValidationErrors, 0)
 	fields := reflect.VisibleFields(reflect.TypeOf(v))
 	for _, field := range fields {
-		fieldValidationError, err := validateField(field, v)
+		res, err := validateField(field, v)
 		if err != nil {
 			return err
 		}
-		if fieldValidationError != nil {
+		if res != Valid {
 			validationErrors = append(validationErrors, ValidationError{
 				Field: field.Name,
-				Err:   fieldValidationError,
+				Err:   fmt.Errorf(string(res)),
 			})
 		}
 	}
@@ -58,10 +71,10 @@ func Validate(v interface{}) (err error) {
 	return validationErrors
 }
 
-func validateField(field reflect.StructField, v interface{}) (error, error) {
+func validateField(field reflect.StructField, v interface{}) (ValidationResult, error) {
 	validations, ok := field.Tag.Lookup("validate")
 	if !ok {
-		return nil, nil
+		return Valid, nil
 	}
 
 	val := reflect.ValueOf(v)
@@ -69,122 +82,122 @@ func validateField(field reflect.StructField, v interface{}) (error, error) {
 	if fieldValue.Kind() == reflect.Slice {
 		for i := 0; i < fieldValue.Len(); i++ {
 			sliceValue := fieldValue.Index(i)
-			validationError, err := validateValueByValidations(sliceValue, validations)
-			if err != nil || validationError != nil {
-				return validationError, err
+			res, err := validateValueByValidations(sliceValue, validations)
+			if err != nil || res != Valid {
+				return res, err
 			}
 		}
 	} else {
-		validationError, err := validateValueByValidations(fieldValue, validations)
-		return validationError, err
+		res, err := validateValueByValidations(fieldValue, validations)
+		return res, err
 	}
 
-	return nil, nil
+	return Valid, nil
 }
 
-func validateValueByValidations(value reflect.Value, rawValidations string) (error, error) {
+func validateValueByValidations(value reflect.Value, rawValidations string) (ValidationResult, error) {
 	validations := strings.Split(rawValidations, "|")
 	for _, validation := range validations {
-		validationError, err := validateValueByValidation(value, validation)
+		res, err := validateValueByValidation(value, validation)
 		if err != nil {
-			return nil, err
+			return Unknown, err
 		}
-		if validationError != nil {
-			return validationError, nil
+		if res != Valid {
+			return res, nil
 		}
 	}
-	return nil, nil
+	return Valid, nil
 }
 
-func validateValueByValidation(value reflect.Value, validation string) (error, error) {
+func validateValueByValidation(value reflect.Value, validation string) (ValidationResult, error) {
 	switch {
 	case value.CanInt():
 		return validateInt(value.Int(), validation)
 	case value.Kind() == reflect.String:
 		return validateString(value.String(), validation)
 	default:
-		return nil, ErrUnsupportedType
+		return Valid, ErrUnsupportedType
 	}
 }
 
-func validateInt(val int64, validation string) (error, error) {
+func validateInt(val int64, validation string) (ValidationResult, error) {
 	switch {
 	case strings.HasPrefix(validation, "min:"):
-		minValue, err := parseIntValidation1(validation)
+		minValue, err := parseIntValidation(validation)
 		if err != nil {
-			return nil, err
+			return Unknown, err
 		}
 		if val >= minValue {
-			return nil, nil
+			return Valid, nil
 		}
-		return ErrInvalidValue, nil
+		return InvalidWithMinimum, nil
 	case strings.HasPrefix(validation, "max:"):
-		maxValue, err := parseIntValidation1(validation)
+		maxValue, err := parseIntValidation(validation)
 		if err != nil {
-			return nil, err
+			return Unknown, err
 		}
 		if val <= maxValue {
-			return nil, nil
+			return Valid, nil
 		}
-		return ErrInvalidValue, nil
+		return InvalidWithMaximum, nil
 	case strings.HasPrefix(validation, "in:"):
-		intValues, err := parseIntValidationN(validation)
+		intValues, err := parseIntValidations(validation)
 		if err != nil {
-			return nil, err
+			return Unknown, err
 		}
 		for _, intValue := range intValues {
 			if intValue == val {
-				return nil, nil
+				return Valid, nil
 			}
 		}
-		return ErrInvalidValue, nil
+		return InvalidWithSet, nil
 	default:
-		return nil, ErrUnsupportedValidation
+		return Unknown, ErrUnsupportedValidation
 	}
 }
 
-func validateString(val string, validation string) (error, error) {
+func validateString(val string, validation string) (ValidationResult, error) {
 	switch {
 	case strings.HasPrefix(validation, "len:"):
-		lenValue, err := parseIntValidation1(validation)
+		lenValue, err := parseIntValidation(validation)
 		if err != nil {
-			return nil, err
+			return Unknown, err
 		}
 		if len(val) == int(lenValue) {
-			return nil, nil
+			return Valid, nil
 		}
-		return ErrInvalidValue, nil
+		return InvalidWithLen, nil
 	case strings.HasPrefix(validation, "regexp:"):
-		regexpValue, err := parseStringValidation1(validation)
+		regexpValue, err := parseStringValidation(validation)
 		if err != nil {
-			return nil, err
+			return Unknown, err
 		}
 		matched, err := regexp.MatchString(regexpValue, val)
 		if err != nil {
-			return nil, ErrIncorrectValidation
+			return Unknown, ErrIncorrectValidation
 		}
 		if matched {
-			return nil, nil
+			return Valid, nil
 		}
-		return ErrInvalidValue, nil
+		return InvalidWithRegex, nil
 	case strings.HasPrefix(validation, "in:"):
-		stringValues, err := parseStringValidationN(validation)
+		stringValues, err := parseStringValidations(validation)
 		if err != nil {
-			return nil, err
+			return Unknown, err
 		}
 		for _, stringValue := range stringValues {
 			if stringValue == val {
-				return nil, nil
+				return Valid, nil
 			}
 		}
-		return ErrInvalidValue, nil
+		return InvalidWithSet, nil
 	default:
-		return nil, ErrUnsupportedValidation
+		return Unknown, ErrUnsupportedValidation
 	}
 }
 
-func parseIntValidation1(validation string) (int64, error) {
-	stringValue, err := parseStringValidation1(validation)
+func parseIntValidation(validation string) (int64, error) {
+	stringValue, err := parseStringValidation(validation)
 	if err != nil {
 		return 0, err
 	}
@@ -195,8 +208,8 @@ func parseIntValidation1(validation string) (int64, error) {
 	return value, nil
 }
 
-func parseIntValidationN(validation string) ([]int64, error) {
-	stringValues, err := parseStringValidationN(validation)
+func parseIntValidations(validation string) ([]int64, error) {
+	stringValues, err := parseStringValidations(validation)
 	if err != nil {
 		return nil, err
 	}
@@ -211,7 +224,7 @@ func parseIntValidationN(validation string) ([]int64, error) {
 	return intValues, nil
 }
 
-func parseStringValidation1(validation string) (string, error) {
+func parseStringValidation(validation string) (string, error) {
 	parts := strings.SplitN(validation, ":", 2)
 	if len(parts) != 2 {
 		return "", ErrIncorrectValidation
@@ -219,7 +232,7 @@ func parseStringValidation1(validation string) (string, error) {
 	return parts[1], nil
 }
 
-func parseStringValidationN(validation string) ([]string, error) {
+func parseStringValidations(validation string) ([]string, error) {
 	parts := strings.SplitN(validation, ":", 2)
 	if len(parts) != 2 {
 		return nil, ErrIncorrectValidation

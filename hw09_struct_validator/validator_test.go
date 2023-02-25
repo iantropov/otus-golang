@@ -45,19 +45,19 @@ func TestValidateWithInvalidInput(t *testing.T) {
 	}{
 		{
 			in:         Response{Code: 123, Body: "asd"},
-			errMessage: "Code: invalid value",
+			errMessage: "Code: isn't element of the set",
 		},
 		{
 			in:         App{Version: "123"},
-			errMessage: "Version: invalid value",
+			errMessage: "Version: invalid length",
 		},
 		{
 			in: User{ID: "123", Name: "name", Age: 10, Email: "asd", Role: "asd", Phones: []string{"asd", "zxc"}},
-			errMessage: "ID: invalid value, " +
-				"Age: invalid value, " +
-				"Email: invalid value, " +
-				"Role: invalid value, " +
-				"Phones: invalid value",
+			errMessage: "ID: invalid length, " +
+				"Age: less than the allowed minimum, " +
+				"Email: doesn't match the regex, " +
+				"Role: isn't element of the set, " +
+				"Phones: invalid length",
 		},
 	}
 
