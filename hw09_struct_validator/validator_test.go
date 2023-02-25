@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 type UserRole string
@@ -36,16 +38,27 @@ type (
 	}
 )
 
-func TestValidate(t *testing.T) {
+func TestValidateWithInvalidInput(t *testing.T) {
 	tests := []struct {
-		in          interface{}
-		expectedErr error
+		in         interface{}
+		errMessage string
 	}{
 		{
-			// Place your code here.
+			in:         Response{Code: 123, Body: "asd"},
+			errMessage: "Code: isn't element of the set",
 		},
-		// ...
-		// Place your code here.
+		{
+			in:         App{Version: "123"},
+			errMessage: "Version: invalid length",
+		},
+		{
+			in: User{ID: "123", Name: "name", Age: 10, Email: "asd", Role: "asd", Phones: []string{"asd", "zxc"}},
+			errMessage: "ID: invalid length, " +
+				"Age: less than the allowed minimum, " +
+				"Email: doesn't match the regex, " +
+				"Role: isn't element of the set, " +
+				"Phones: invalid length",
+		},
 	}
 
 	for i, tt := range tests {
@@ -53,8 +66,35 @@ func TestValidate(t *testing.T) {
 			tt := tt
 			t.Parallel()
 
-			// Place your code here.
-			_ = tt
+			err := Validate(tt.in)
+			require.EqualError(t, err, tt.errMessage)
+		})
+	}
+}
+
+func TestValidateWithValidInput(t *testing.T) {
+	tests := []interface{}{
+		Response{Code: 200, Body: "asd"},
+		Token{Header: nil, Payload: nil, Signature: nil},
+		App{Version: "12345"},
+		User{
+			ID:     "123456789x123456789x123456789x123456",
+			Name:   "name",
+			Age:    20,
+			Email:  "asd@asd.asd",
+			Role:   "admin",
+			Phones: []string{"123456789x1", "123456789x2"},
+			meta:   nil,
+		},
+	}
+
+	for i, tt := range tests {
+		t.Run(fmt.Sprintf("case %d", i), func(t *testing.T) {
+			tt := tt
+			t.Parallel()
+
+			err := Validate(tt)
+			require.Equal(t, err, nil)
 		})
 	}
 }
