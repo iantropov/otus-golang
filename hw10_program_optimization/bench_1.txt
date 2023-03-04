@@ -1,0 +1,16 @@
+goos: darwin
+goarch: amd64
+pkg: github.com/iantropov/otus-golang/hw10_program_optimization
+cpu: Intel(R) Core(TM) i7-9750H CPU @ 2.60GHz
+BenchmarkGetDomainStat-12    	       8	 133075692 ns/op	136045586 B/op	 1700090 allocs/op
+BenchmarkGetDomainStat-12    	       8	 133246628 ns/op	136045584 B/op	 1700090 allocs/op
+BenchmarkGetDomainStat-12    	       8	 131701504 ns/op	136045596 B/op	 1700090 allocs/op
+BenchmarkGetDomainStat-12    	       8	 133908087 ns/op	136045608 B/op	 1700090 allocs/op
+BenchmarkGetDomainStat-12    	       8	 132758189 ns/op	136045608 B/op	 1700090 allocs/op
+BenchmarkGetDomainStat-12    	       8	 136647052 ns/op	136045586 B/op	 1700090 allocs/op
+BenchmarkGetDomainStat-12    	       8	 132212545 ns/op	136045584 B/op	 1700090 allocs/op
+BenchmarkGetDomainStat-12    	       8	 132695150 ns/op	136045612 B/op	 1700090 allocs/op
+BenchmarkGetDomainStat-12    	       8	 138787057 ns/op	136045598 B/op	 1700090 allocs/op
+BenchmarkGetDomainStat-12    	       8	 132354471 ns/op	136045594 B/op	 1700090 allocs/op
+PASS
+ok  	github.com/iantropov/otus-golang/hw10_program_optimization	23.758s

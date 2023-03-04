@@ -1,12 +1,13 @@
 package hw10programoptimization
 
 import (
-	"encoding/json"
+	"bufio"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"regexp"
 	"strings"
+
+	"github.com/valyala/fastjson"
 )
 
 type User struct {
@@ -29,38 +30,57 @@ func GetDomainStat(r io.Reader, domain string) (DomainStat, error) {
 	return countDomains(u, domain)
 }
 
-type users [100_000]User
+type userEmails [100_000]*string
 
-func getUsers(r io.Reader) (result users, err error) {
-	content, err := ioutil.ReadAll(r)
-	if err != nil {
+func getUsers(r io.Reader) (result userEmails, err error) {
+	// jsonDecoder := json.NewDecoder(bufio.NewReaderSize(r, 409_600))
+
+	// for i := 0; ; i++ {
+	// 	var user User
+	// 	if err = jsonDecoder.Decode(&user); err == io.EOF {
+	// 		err = nil
+	// 		break
+	// 	} else if err != nil {
+	// 		return
+	// 	}
+	// 	result[i] = user
+	// }
+
+	i := 0
+	scanner := bufio.NewScanner(r)
+	var value *fastjson.Value
+	p := fastjson.Parser{}
+	for scanner.Scan() {
+		value, err = p.Parse(scanner.Text())
+		if err != nil {
+			return
+		}
+		s := string(value.GetStringBytes("Email"))
+		result[i] = &s
+		i++
+	}
+	if err = scanner.Err(); err != nil {
 		return
 	}
 
-	lines := strings.Split(string(content), "\n")
-	for i, line := range lines {
-		var user User
-		if err = json.Unmarshal([]byte(line), &user); err != nil {
-			return
-		}
-		result[i] = user
-	}
 	return
 }
 
-func countDomains(u users, domain string) (DomainStat, error) {
+func countDomains(u userEmails, domain string) (DomainStat, error) {
 	result := make(DomainStat)
 
-	for _, user := range u {
-		matched, err := regexp.Match("\\."+domain, []byte(user.Email))
-		if err != nil {
-			return nil, err
+	domainRx, err := regexp.Compile("\\." + domain)
+	if err != nil {
+		return nil, err
+	}
+	for _, userEmail := range u {
+		if userEmail == nil {
+			return result, nil
 		}
 
-		if matched {
-			num := result[strings.ToLower(strings.SplitN(user.Email, "@", 2)[1])]
-			num++
-			result[strings.ToLower(strings.SplitN(user.Email, "@", 2)[1])] = num
+		if domainRx.MatchString(*userEmail) {
+			domainPart := strings.SplitN(*userEmail, "@", 2)[1]
+			result[strings.ToLower(domainPart)]++
 		}
 	}
 	return result, nil
