@@ -30,23 +30,9 @@ func GetDomainStat(r io.Reader, domain string) (DomainStat, error) {
 	return countDomains(u, domain)
 }
 
-type userEmails [100_000]*string
+type userEmails []string
 
 func getUsers(r io.Reader) (result userEmails, err error) {
-	// jsonDecoder := json.NewDecoder(bufio.NewReaderSize(r, 409_600))
-
-	// for i := 0; ; i++ {
-	// 	var user User
-	// 	if err = jsonDecoder.Decode(&user); err == io.EOF {
-	// 		err = nil
-	// 		break
-	// 	} else if err != nil {
-	// 		return
-	// 	}
-	// 	result[i] = user
-	// }
-
-	i := 0
 	scanner := bufio.NewScanner(r)
 	var value *fastjson.Value
 	p := fastjson.Parser{}
@@ -56,8 +42,7 @@ func getUsers(r io.Reader) (result userEmails, err error) {
 			return
 		}
 		s := string(value.GetStringBytes("Email"))
-		result[i] = &s
-		i++
+		result = append(result, s)
 	}
 	if err = scanner.Err(); err != nil {
 		return
@@ -74,12 +59,8 @@ func countDomains(u userEmails, domain string) (DomainStat, error) {
 		return nil, err
 	}
 	for _, userEmail := range u {
-		if userEmail == nil {
-			return result, nil
-		}
-
-		if domainRx.MatchString(*userEmail) {
-			domainPart := strings.SplitN(*userEmail, "@", 2)[1]
+		if domainRx.MatchString(userEmail) {
+			domainPart := strings.SplitN(userEmail, "@", 2)[1]
 			result[strings.ToLower(domainPart)]++
 		}
 	}
