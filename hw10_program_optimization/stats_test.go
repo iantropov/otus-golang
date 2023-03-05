@@ -37,6 +37,13 @@ func TestGetDomainStat(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, DomainStat{}, result)
 	})
+
+	t.Run("invalid JSON", func(t *testing.T) {
+		result, err := GetDomainStat(bytes.NewBufferString("asd"), "asd")
+		require.Nil(t, result)
+		require.NotNil(t, err)
+		require.Contains(t, err.Error(), "cannot parse JSON")
+	})
 }
 
 func BenchmarkGetDomainStat(b *testing.B) {
