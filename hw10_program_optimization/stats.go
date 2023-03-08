@@ -23,46 +23,36 @@ type User struct {
 type DomainStat map[string]int
 
 func GetDomainStat(r io.Reader, domain string) (DomainStat, error) {
-	u, err := getUsers(r)
+	domainStat, err := getDomainStat(r, domain)
 	if err != nil {
 		return nil, fmt.Errorf("get users error: %w", err)
 	}
-	return countDomains(u, domain)
+	return domainStat, nil
 }
 
-type userEmails []string
-
-func getUsers(r io.Reader) (result userEmails, err error) {
+func getDomainStat(r io.Reader, domain string) (DomainStat, error) {
+	domainStat := make(DomainStat)
 	scanner := bufio.NewScanner(r)
-	var value *fastjson.Value
 	p := fastjson.Parser{}
-	for scanner.Scan() {
-		value, err = p.Parse(scanner.Text())
-		if err != nil {
-			return
-		}
-		s := string(value.GetStringBytes("Email"))
-		result = append(result, s)
-	}
-	if err = scanner.Err(); err != nil {
-		return
-	}
-
-	return
-}
-
-func countDomains(u userEmails, domain string) (DomainStat, error) {
-	result := make(DomainStat)
-
 	domainRx, err := regexp.Compile("\\." + domain)
 	if err != nil {
 		return nil, err
 	}
-	for _, userEmail := range u {
-		if domainRx.MatchString(userEmail) {
-			domainPart := strings.SplitN(userEmail, "@", 2)[1]
-			result[strings.ToLower(domainPart)]++
+
+	for scanner.Scan() {
+		parsedJson, err := p.Parse(scanner.Text())
+		if err != nil {
+			return nil, err
+		}
+		email := string(parsedJson.GetStringBytes("Email"))
+		if domainRx.MatchString(email) {
+			domainPart := strings.SplitN(email, "@", 2)[1]
+			domainStat[strings.ToLower(domainPart)]++
 		}
 	}
-	return result, nil
+	if err := scanner.Err(); err != nil {
+		return nil, err
+	}
+
+	return domainStat, nil
 }
