@@ -1,11 +1,8 @@
 package main
 
 import (
-	"bufio"
-	"fmt"
 	"io"
 	"net"
-	"os"
 	"time"
 )
 
@@ -23,20 +20,15 @@ type TelnetClientImpl struct {
 	out     io.Writer
 	conn    net.Conn
 	closed  bool
-	scanner *bufio.Scanner
 }
 
 func NewTelnetClient(address string, timeout time.Duration, in io.ReadCloser, out io.Writer) TelnetClient {
-	return &TelnetClientImpl{address, timeout, in, out, nil, false, nil}
+	return &TelnetClientImpl{address, timeout, in, out, nil, false}
 }
 
 func (tc *TelnetClientImpl) Connect() error {
 	conn, err := net.DialTimeout("tcp", tc.address, tc.timeout)
 	tc.conn = conn
-	if err == nil {
-		tc.scanner = bufio.NewScanner(tc.conn)
-		return nil
-	}
 	return err
 }
 
@@ -55,22 +47,11 @@ func (tc *TelnetClientImpl) Send() error {
 }
 
 func (tc *TelnetClientImpl) Receive() error {
-	if tc.scanner.Scan() {
-		fmt.Fprintln(os.Stderr, "TELNET:", tc.scanner.Bytes(), tc.scanner.Text(), tc.scanner.Err())
-		_, err := tc.out.Write(tc.scanner.Bytes())
-		if err != nil {
-			return err
-		}
-		tc.out.Write([]byte{'\n'})
-		return nil
+	buf := make([]byte, 10)
+	read, err := tc.conn.Read(buf)
+	// fmt.Fprintf(os.Stderr, "TELNET - read: %d; len: %d; %v, %s, %v", read, len(buf), buf, buf, err)
+	if read > 0 {
+		tc.out.Write(buf[:read])
 	}
-	fmt.Fprintln(os.Stderr, "TELNET (AFTER SCAN):", tc.closed, tc.scanner.Err())
-	if tc.closed {
-		return io.EOF
-	}
-	err := tc.scanner.Err()
-	if err != nil {
-		return err
-	}
-	return io.EOF
+	return err
 }

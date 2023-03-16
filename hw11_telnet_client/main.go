@@ -54,7 +54,7 @@ func main() {
 
 		scanner := bufio.NewScanner(os.Stdin)
 		for scanner.Scan() {
-			fmt.Fprintln(os.Stderr, "READER:", scanner.Bytes(), scanner.Text(), scanner.Err())
+			// fmt.Fprintln(os.Stderr, "READER:", scanner.Bytes(), scanner.Text(), scanner.Err())
 			bufferIn.Reset()
 			bufferIn.Write(scanner.Bytes())
 			bufferIn.WriteString("\n")
@@ -86,29 +86,27 @@ func main() {
 
 		for {
 			err := telnetClient.Receive()
-			fmt.Fprintln(os.Stderr, "WRITER:", bufferOut.Bytes(), err)
-			if err == io.EOF {
-				if ctx.Err() == nil {
-					fmt.Fprintln(os.Stderr, "...Connection was closed by peer")
-				}
-				fmt.Fprintln(os.Stderr, "CONTEXT WAS CLOSED")
-				return
-			}
-
-			if err != nil {
-				if ctx.Err() != nil {
-					fmt.Fprintln(os.Stderr, "CONTEXT WAS CLOSED")
+			// fmt.Fprintln(os.Stderr, "WRITER:", bufferOut.Bytes(), err)
+			if len(bufferOut.Bytes()) > 0 {
+				_, err = os.Stdout.Write(bufferOut.Bytes())
+				if err != nil {
+					fmt.Fprintln(os.Stderr, "...Failed to send data to STDOUT", err)
 					return
 				}
+				bufferOut.Reset()
+			}
+			if ctx.Err() != nil {
+				// fmt.Fprintln(os.Stderr, "CONTEXT WAS CLOSED")
+				return
+			}
+			if err == io.EOF {
+				fmt.Fprintln(os.Stderr, "...Connection was closed by peer")
+				return
+			}
+			if err != nil {
 				fmt.Fprintln(os.Stderr, "...Failed to receive data from the telnet client", err)
 				return
 			}
-			_, err = os.Stdout.Write(bufferOut.Bytes())
-			if err != nil {
-				fmt.Fprintln(os.Stderr, "...Failed to send data to STDOUT", err)
-				return
-			}
-			bufferOut.Reset()
 		}
 	}()
 
