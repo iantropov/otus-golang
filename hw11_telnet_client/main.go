@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/signal"
 	"strings"
 	"sync"
 	"time"
@@ -29,7 +30,7 @@ func main() {
 		return
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer cancel()
 
 	bufferOut := &bytes.Buffer{}
@@ -76,6 +77,9 @@ func main() {
 		}
 
 		fmt.Fprintln(os.Stderr, "...EOF")
+
+		// Даём возможность конкурентному чтение сделать запрос на чтение
+		time.Sleep(time.Second)
 	}()
 
 	go func() {
