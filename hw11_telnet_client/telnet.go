@@ -49,7 +49,7 @@ func (tc *TelnetClientImpl) Send() error {
 }
 
 func (tc *TelnetClientImpl) Receive() error {
-	buf := make([]byte, 512)
+	buf := make([]byte, 10)
 	read, err := tc.conn.Read(buf)
 	// fmt.Fprintf(os.Stderr, "TELNET - read: %d; len: %d; %v, %s, %v", read, len(buf), buf, buf, err)
 	fmt.Fprintf(os.Stderr, "TELNET - read: %d, %v", read, err)
