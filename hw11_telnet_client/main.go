@@ -22,7 +22,7 @@ func init() {
 }
 
 func main() {
-	connectionStr, err := parseConnectionString()
+	connectionStr, err := parseConnectionString(os.Args)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return
@@ -57,6 +57,9 @@ func main() {
 			bufferIn.WriteString("\n")
 			err := telnetClient.Send()
 			if err != nil {
+				if ctx.Err() != nil {
+					return
+				}
 				fmt.Fprintln(os.Stderr, "...Failed to send data to the telnet client", err)
 				return
 			}
@@ -78,7 +81,7 @@ func main() {
 		defer cancel()
 		defer wg.Done()
 
-		for ctx.Err() == nil {
+		for {
 			err := telnetClient.Receive()
 			if err == io.EOF {
 				if ctx.Err() == nil {
@@ -86,7 +89,11 @@ func main() {
 				}
 				return
 			}
+
 			if err != nil {
+				if ctx.Err() != nil {
+					return
+				}
 				fmt.Fprintln(os.Stderr, "...Failed to receive data from the telnet client", err)
 				return
 			}
@@ -104,9 +111,9 @@ func main() {
 	wg.Wait()
 }
 
-func parseConnectionString() (string, error) {
+func parseConnectionString(osArgs []string) (string, error) {
 	connectionArgs := make([]string, 0, 2)
-	for i := 1; i < len(os.Args); i++ {
+	for i := 1; i < len(osArgs); i++ {
 		if strings.HasPrefix(os.Args[i], "-") {
 			continue
 		}

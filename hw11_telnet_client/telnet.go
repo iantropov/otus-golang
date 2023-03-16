@@ -53,23 +53,22 @@ func (tc *TelnetClientImpl) Send() error {
 }
 
 func (tc *TelnetClientImpl) Receive() error {
-	var err error
-	var wrote int
 	if tc.scanner.Scan() {
-		wrote, err = tc.out.Write(tc.scanner.Bytes())
+		_, err := tc.out.Write(tc.scanner.Bytes())
+		if err != nil {
+			return err
+		}
 		tc.out.Write([]byte{'\n'})
 	}
-	if err == nil {
-		if wrote == 0 {
-			return io.EOF
-		}
-		err = tc.scanner.Err()
-	}
+	err := tc.scanner.Err()
 	if err != nil {
 		if tc.closed {
 			return io.EOF
 		}
 		return err
+	}
+	if len(tc.scanner.Bytes()) == 0 {
+		return io.EOF
 	}
 	return nil
 }
