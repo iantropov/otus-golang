@@ -1,10 +1,8 @@
 package main
 
 import (
-	"fmt"
 	"io"
 	"net"
-	"os"
 	"time"
 )
 
@@ -22,10 +20,12 @@ type TelnetClientImpl struct {
 	out     io.Writer
 	conn    net.Conn
 	closed  bool
+	buffer  []byte
 }
 
 func NewTelnetClient(address string, timeout time.Duration, in io.ReadCloser, out io.Writer) TelnetClient {
-	return &TelnetClientImpl{address, timeout, in, out, nil, false}
+	buf := make([]byte, 512)
+	return &TelnetClientImpl{address, timeout, in, out, nil, false, buf}
 }
 
 func (tc *TelnetClientImpl) Connect() error {
@@ -49,12 +49,9 @@ func (tc *TelnetClientImpl) Send() error {
 }
 
 func (tc *TelnetClientImpl) Receive() error {
-	buf := make([]byte, 10)
-	read, err := tc.conn.Read(buf)
-	// fmt.Fprintf(os.Stderr, "TELNET - read: %d; len: %d; %v, %s, %v", read, len(buf), buf, buf, err)
-	fmt.Fprintf(os.Stderr, "TELNET - read: %d, %v", read, err)
+	read, err := tc.conn.Read(tc.buffer)
 	if read > 0 {
-		tc.out.Write(buf[:read])
+		tc.out.Write(tc.buffer[:read])
 	}
 	return err
 }

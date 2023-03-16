@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"os/signal"
 	"strings"
 	"sync"
 	"time"
@@ -30,7 +29,7 @@ func main() {
 		return
 	}
 
-	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	bufferOut := &bytes.Buffer{}
@@ -54,7 +53,6 @@ func main() {
 
 		scanner := bufio.NewScanner(os.Stdin)
 		for scanner.Scan() {
-			fmt.Fprintln(os.Stderr, "READER:", scanner.Bytes(), scanner.Text(), scanner.Err())
 			bufferIn.Reset()
 			bufferIn.Write(scanner.Bytes())
 			bufferIn.WriteString("\n")
@@ -86,7 +84,6 @@ func main() {
 
 		for {
 			err := telnetClient.Receive()
-			fmt.Fprintln(os.Stderr, "WRITER:", bufferOut.Bytes(), err)
 			if len(bufferOut.Bytes()) > 0 {
 				_, err = os.Stdout.Write(bufferOut.Bytes())
 				if err != nil {
@@ -97,7 +94,6 @@ func main() {
 			}
 			if err != nil {
 				if ctx.Err() != nil {
-					fmt.Fprintln(os.Stderr, "CONTEXT WAS CLOSED")
 					return
 				}
 				if err == io.EOF {
