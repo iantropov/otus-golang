@@ -86,15 +86,18 @@ func main() {
 
 		for {
 			err := telnetClient.Receive()
+			fmt.Fprintln(os.Stderr, "WRITER:", bufferOut.Bytes(), err)
 			if err == io.EOF {
 				if ctx.Err() == nil {
 					fmt.Fprintln(os.Stderr, "...Connection was closed by peer")
 				}
+				fmt.Fprintln(os.Stderr, "CONTEXT WAS CLOSED")
 				return
 			}
 
 			if err != nil {
 				if ctx.Err() != nil {
+					fmt.Fprintln(os.Stderr, "CONTEXT WAS CLOSED")
 					return
 				}
 				fmt.Fprintln(os.Stderr, "...Failed to receive data from the telnet client", err)
