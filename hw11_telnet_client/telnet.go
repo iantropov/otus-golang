@@ -59,16 +59,18 @@ func (tc *TelnetClientImpl) Receive() error {
 			return err
 		}
 		tc.out.Write([]byte{'\n'})
+		return nil
+	}
+	if tc.closed {
+		return io.EOF
 	}
 	err := tc.scanner.Err()
 	if err != nil {
-		if tc.closed {
-			return io.EOF
-		}
 		return err
 	}
+	return io.EOF
 	// if len(tc.scanner.Bytes()) == 0 {
 	// 	return io.EOF
 	// }
-	return nil
+	// return nil
 }
