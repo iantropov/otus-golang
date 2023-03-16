@@ -2,10 +2,8 @@ package main
 
 import (
 	"bufio"
-	"fmt"
 	"io"
 	"net"
-	"os"
 	"time"
 )
 
@@ -56,7 +54,6 @@ func (tc *TelnetClientImpl) Send() error {
 
 func (tc *TelnetClientImpl) Receive() error {
 	if tc.scanner.Scan() {
-		fmt.Fprintln(os.Stderr, "TELNET:", tc.scanner.Bytes(), tc.scanner.Text(), tc.scanner.Err())
 		_, err := tc.out.Write(tc.scanner.Bytes())
 		if err != nil {
 			return err
@@ -72,8 +69,4 @@ func (tc *TelnetClientImpl) Receive() error {
 		return err
 	}
 	return io.EOF
-	// if len(tc.scanner.Bytes()) == 0 {
-	// 	return io.EOF
-	// }
-	// return nil
 }

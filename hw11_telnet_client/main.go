@@ -54,7 +54,6 @@ func main() {
 
 		scanner := bufio.NewScanner(os.Stdin)
 		for scanner.Scan() {
-			fmt.Fprintln(os.Stderr, "READER:", scanner.Bytes(), scanner.Text(), scanner.Err())
 			bufferIn.Reset()
 			bufferIn.Write(scanner.Bytes())
 			bufferIn.WriteString("\n")
@@ -117,10 +116,10 @@ func main() {
 func parseConnectionString(osArgs []string) (string, error) {
 	connectionArgs := make([]string, 0, 2)
 	for i := 1; i < len(osArgs); i++ {
-		if strings.HasPrefix(os.Args[i], "-") {
+		if strings.HasPrefix(osArgs[i], "-") {
 			continue
 		}
-		connectionArgs = append(connectionArgs, os.Args[i])
+		connectionArgs = append(connectionArgs, osArgs[i])
 	}
 
 	if len(connectionArgs) != 2 {
