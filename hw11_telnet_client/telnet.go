@@ -64,6 +64,7 @@ func (tc *TelnetClientImpl) Receive() error {
 		tc.out.Write([]byte{'\n'})
 		return nil
 	}
+	fmt.Fprintln(os.Stderr, "TELNET (AFTER SCAN):", tc.closed, tc.scanner.Err())
 	if tc.closed {
 		return io.EOF
 	}
