@@ -19,13 +19,12 @@ type TelnetClientImpl struct {
 	in      io.ReadCloser
 	out     io.Writer
 	conn    net.Conn
-	closed  bool
 	buffer  []byte
 }
 
 func NewTelnetClient(address string, timeout time.Duration, in io.ReadCloser, out io.Writer) TelnetClient {
 	buf := make([]byte, 512)
-	return &TelnetClientImpl{address, timeout, in, out, nil, false, buf}
+	return &TelnetClientImpl{address, timeout, in, out, nil, buf}
 }
 
 func (tc *TelnetClientImpl) Connect() error {
@@ -35,7 +34,6 @@ func (tc *TelnetClientImpl) Connect() error {
 }
 
 func (tc *TelnetClientImpl) Close() error {
-	tc.closed = true
 	return tc.conn.Close()
 }
 
