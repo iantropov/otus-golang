@@ -21,22 +21,6 @@ func init() {
 	flag.DurationVar(&timeout, "timeout", 10*time.Second, "connection timeout")
 }
 
-type MyBuffer struct {
-	bytes.Buffer
-	onClose func()
-}
-
-func NewMyBuffer(onClose func()) *MyBuffer {
-	return &MyBuffer{
-		onClose: onClose,
-	}
-}
-
-func (mb *MyBuffer) Close() error {
-	mb.onClose()
-	return nil
-}
-
 func main() {
 	connectionStr, err := parseConnectionString()
 	if err != nil {
@@ -47,13 +31,10 @@ func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer cancel()
 
-	bufferIn := NewMyBuffer(func() {
-		fmt.Fprintln(os.Stderr, "...Received close from the server!")
-		cancel()
-	})
 	bufferOut := &bytes.Buffer{}
+	bufferIn := &bytes.Buffer{}
 
-	telnetClient := NewTelnetClient(connectionStr, timeout, bufferIn, bufferOut)
+	telnetClient := NewTelnetClient(connectionStr, timeout, io.NopCloser(bufferIn), bufferOut)
 	err = telnetClient.Connect()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "...Failed to connect to: %v\n", err)
