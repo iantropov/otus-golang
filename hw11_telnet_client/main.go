@@ -51,7 +51,7 @@ func main() {
 		defer wg.Done()
 
 		scanner := bufio.NewScanner(os.Stdin)
-		for scanner.Scan() && ctx.Err() == nil {
+		for scanner.Scan() {
 			bufferIn.Reset()
 			bufferIn.Write(scanner.Bytes())
 			bufferIn.WriteString("\n")
