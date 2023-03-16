@@ -17,6 +17,8 @@ import (
 
 var timeout time.Duration
 
+var ErrInvalidArgs = errors.New("invalid arguments")
+
 func init() {
 	flag.DurationVar(&timeout, "timeout", 10*time.Second, "connection timeout")
 }
@@ -24,7 +26,7 @@ func init() {
 func main() {
 	connectionStr, err := parseConnectionString(os.Args)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
+		fmt.Fprintf(os.Stderr, "...Failed to start: %v", err)
 		return
 	}
 
@@ -121,7 +123,7 @@ func parseConnectionString(osArgs []string) (string, error) {
 	}
 
 	if len(connectionArgs) != 2 {
-		return "", errors.New("...Please, provide host and port arguments and possibly timeout")
+		return "", ErrInvalidArgs
 	}
 
 	return fmt.Sprintf("%s:%s", connectionArgs[0], connectionArgs[1]), nil
