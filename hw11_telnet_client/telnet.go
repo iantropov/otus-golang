@@ -67,8 +67,8 @@ func (tc *TelnetClientImpl) Receive() error {
 		}
 		return err
 	}
-	if len(tc.scanner.Bytes()) == 0 {
-		return io.EOF
-	}
+	// if len(tc.scanner.Bytes()) == 0 {
+	// 	return io.EOF
+	// }
 	return nil
 }
