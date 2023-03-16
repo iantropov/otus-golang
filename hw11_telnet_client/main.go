@@ -4,12 +4,13 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"os/signal"
+	"strings"
 	"sync"
 	"time"
 )
@@ -37,97 +38,103 @@ func (mb *MyBuffer) Close() error {
 }
 
 func main() {
-	// if len(os.Args) != 3 {
-	// 	fmt.Println("Please, provide host and port arguments")
-	// 	return
-	// }
-
-	// host := os.Args[1]
-	// port := os.Args[2]
-
-	host := "localhost"
-	port := "9000"
-
-	connectionStr := fmt.Sprintf("%s:%s", host, port)
+	connectionStr, err := parseConnectionString()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return
+	}
 
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer cancel()
 
 	bufferIn := NewMyBuffer(func() {
-		fmt.Println("Received close from the server!")
+		fmt.Fprintln(os.Stderr, "...Received close from the server!")
 		cancel()
 	})
 	bufferOut := &bytes.Buffer{}
 
 	telnetClient := NewTelnetClient(connectionStr, timeout, bufferIn, bufferOut)
-	err := telnetClient.Connect()
+	err = telnetClient.Connect()
 	if err != nil {
-		log.Fatalf("failed to connect to: %v\n", err)
+		fmt.Fprintf(os.Stderr, "...Failed to connect to: %v\n", err)
+		os.Exit(1)
 	}
-	defer telnetClient.Close()
+
+	fmt.Fprintln(os.Stderr, "...Connected to", connectionStr)
 
 	wg := sync.WaitGroup{}
+	wg.Add(2)
 
-	wg.Add(1)
 	go func() {
 		defer cancel()
 		defer wg.Done()
 
 		scanner := bufio.NewScanner(os.Stdin)
-		fmt.Println("Ready to Scan!")
-		for scanner.Scan() {
-			if ctx.Err() != nil {
-				fmt.Println("Received ctx.Done() in sender")
-				return
-			}
-			fmt.Println("Scanned!")
-
+		for scanner.Scan() && ctx.Err() == nil {
 			bufferIn.Reset()
 			bufferIn.Write(scanner.Bytes())
 			bufferIn.WriteString("\n")
 			err := telnetClient.Send()
 			if err != nil {
-				fmt.Println("Failed to send data to the telnet client", err)
+				fmt.Fprintln(os.Stderr, "...Failed to send data to the telnet client", err)
 				return
 			}
 		}
-		fmt.Println("Finished scanning!")
 
-		if scanner.Err() != io.EOF {
-			fmt.Println("Received error from scanner", scanner.Err())
+		if ctx.Err() != nil {
 			return
 		}
+
+		if scanner.Err() != nil {
+			fmt.Fprintln(os.Stderr, "...Received error from scanner", scanner.Err())
+			return
+		}
+
+		fmt.Fprintln(os.Stderr, "...EOF")
 	}()
 
-	wg.Add(1)
 	go func() {
 		defer cancel()
 		defer wg.Done()
 
-		fmt.Println("Ready to receive!")
-		for {
-			if ctx.Err() != nil {
-				fmt.Println("Received ctx.Done() in receiver")
+		for ctx.Err() == nil {
+			err := telnetClient.Receive()
+			if err == io.EOF {
+				if ctx.Err() == nil {
+					fmt.Fprintln(os.Stderr, "...Connection was closed by peer")
+				}
 				return
 			}
-			fmt.Println("Will receive!")
-
-			err := telnetClient.Receive()
-			fmt.Print("Received: ")
 			if err != nil {
-				fmt.Println("Failed to receive data from the telnet client", err)
+				fmt.Fprintln(os.Stderr, "...Failed to receive data from the telnet client", err)
 				return
 			}
 			_, err = os.Stdout.Write(bufferOut.Bytes())
 			if err != nil {
-				fmt.Println("Failed to send data to STDOUT", err)
+				fmt.Fprintln(os.Stderr, "...Failed to send data to STDOUT", err)
+				return
 			}
-			os.Stdout.WriteString("\n")
 			bufferOut.Reset()
 		}
 	}()
 
+	<-ctx.Done()
+	telnetClient.Close()
 	wg.Wait()
+}
 
-	fmt.Println("FINISHED")
+func parseConnectionString() (string, error) {
+	connectionArgs := make([]string, 0, 2)
+	for i := 1; i < len(os.Args); i++ {
+		if strings.HasPrefix(os.Args[i], "-") {
+			continue
+		}
+		connectionArgs = append(connectionArgs, os.Args[i])
+	}
+
+	if len(connectionArgs) != 2 {
+		return "", errors.New("...Please, provide host and port arguments and possibly timeout")
+	}
+
+	return fmt.Sprintf("%s:%s", connectionArgs[0], connectionArgs[1]), nil
 }

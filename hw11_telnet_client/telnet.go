@@ -20,23 +20,26 @@ type TelnetClientImpl struct {
 	in      io.ReadCloser
 	out     io.Writer
 	conn    net.Conn
+	closed  bool
+	scanner *bufio.Scanner
 }
 
 func NewTelnetClient(address string, timeout time.Duration, in io.ReadCloser, out io.Writer) TelnetClient {
-	// Place your code here.
-	return &TelnetClientImpl{address, timeout, in, out, nil}
+	return &TelnetClientImpl{address, timeout, in, out, nil, false, nil}
 }
-
-// Place your code here.
-// P.S. Author's solution takes no more than 50 lines.
 
 func (tc *TelnetClientImpl) Connect() error {
 	conn, err := net.DialTimeout("tcp", tc.address, tc.timeout)
 	tc.conn = conn
+	if err == nil {
+		tc.scanner = bufio.NewScanner(tc.conn)
+		return nil
+	}
 	return err
 }
 
 func (tc *TelnetClientImpl) Close() error {
+	tc.closed = true
 	return tc.conn.Close()
 }
 
@@ -50,11 +53,23 @@ func (tc *TelnetClientImpl) Send() error {
 }
 
 func (tc *TelnetClientImpl) Receive() error {
-	scanner := bufio.NewScanner(tc.conn)
-	ok := scanner.Scan()
-	if ok {
-		_, err := tc.out.Write(scanner.Bytes())
+	var err error
+	var wrote int
+	if tc.scanner.Scan() {
+		wrote, err = tc.out.Write(tc.scanner.Bytes())
+		tc.out.Write([]byte{'\n'})
+	}
+	if err == nil {
+		if wrote == 0 {
+			return io.EOF
+		}
+		err = tc.scanner.Err()
+	}
+	if err != nil {
+		if tc.closed {
+			return io.EOF
+		}
 		return err
 	}
-	return scanner.Err()
+	return nil
 }
