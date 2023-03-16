@@ -54,6 +54,7 @@ func main() {
 
 		scanner := bufio.NewScanner(os.Stdin)
 		for scanner.Scan() {
+			fmt.Fprintln(os.Stderr, "READER:", scanner.Bytes(), scanner.Text(), scanner.Err())
 			bufferIn.Reset()
 			bufferIn.Write(scanner.Bytes())
 			bufferIn.WriteString("\n")
