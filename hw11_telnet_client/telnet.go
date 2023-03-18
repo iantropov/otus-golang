@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"io"
 	"net"
 	"time"
@@ -8,48 +9,62 @@ import (
 
 type TelnetClient interface {
 	Connect() error
-	Close() error
+	io.Closer
 	Send() error
 	Receive() error
 }
 
-type TelnetClientImpl struct {
+type client struct {
 	address string
 	timeout time.Duration
 	in      io.ReadCloser
 	out     io.Writer
-	conn    net.Conn
-	buffer  []byte
+	con     net.Conn
 }
 
 func NewTelnetClient(address string, timeout time.Duration, in io.ReadCloser, out io.Writer) TelnetClient {
-	buf := make([]byte, 512)
-	return &TelnetClientImpl{address, timeout, in, out, nil, buf}
+	return &client{
+		address: address,
+		timeout: timeout,
+		in:      in,
+		out:     out,
+	}
 }
 
-func (tc *TelnetClientImpl) Connect() error {
-	conn, err := net.DialTimeout("tcp", tc.address, tc.timeout)
-	tc.conn = conn
-	return err
-}
+func (c *client) Connect() error {
+	if c.in == nil {
+		return fmt.Errorf("in is invalid")
+	}
+	if c.out == nil {
+		return fmt.Errorf("out is invalid")
+	}
 
-func (tc *TelnetClientImpl) Close() error {
-	return tc.conn.Close()
-}
-
-func (tc *TelnetClientImpl) Send() error {
-	data, err := io.ReadAll(tc.in)
+	con, err := net.DialTimeout("tcp", c.address, c.timeout)
 	if err != nil {
 		return err
 	}
-	_, err = tc.conn.Write(data)
-	return err
+
+	c.con = con
+
+	return nil
 }
 
-func (tc *TelnetClientImpl) Receive() error {
-	read, err := tc.conn.Read(tc.buffer)
-	if read > 0 {
-		tc.out.Write(tc.buffer[:read])
+func (c *client) Close() error {
+	return c.con.Close()
+}
+
+func (c *client) Send() error {
+	if _, err := io.Copy(c.con, c.in); err != nil {
+		return fmt.Errorf("failed to send message: %w", err)
 	}
-	return err
+
+	return nil
+}
+
+func (c *client) Receive() error {
+	if _, err := io.Copy(c.out, c.con); err != nil {
+		return fmt.Errorf("failed to receive message: %w", err)
+	}
+
+	return nil
 }
