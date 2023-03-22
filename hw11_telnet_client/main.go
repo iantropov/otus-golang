@@ -1,30 +1,24 @@
 package main
 
 import (
-	"bufio"
-	"bytes"
 	"context"
 	"errors"
 	"flag"
 	"fmt"
-	"io"
+	"net"
 	"os"
 	"os/signal"
-	"strings"
-	"sync"
 	"time"
 )
 
-var timeout time.Duration
-
 var ErrInvalidArgs = errors.New("invalid arguments")
 
-func init() {
-	flag.DurationVar(&timeout, "timeout", 10*time.Second, "connection timeout")
-}
-
 func main() {
-	connectionStr, err := parseConnectionString(os.Args)
+	var timeout time.Duration
+	flag.DurationVar(&timeout, "timeout", 10*time.Second, "connection timeout")
+	flag.Parse()
+
+	connectionStr, err := parseConnectionString(flag.Args())
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "...Failed to start: %v", err)
 		return
@@ -33,100 +27,36 @@ func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer cancel()
 
-	bufferOut := &bytes.Buffer{}
-	bufferIn := &bytes.Buffer{}
-
-	telnetClient := NewTelnetClient(connectionStr, timeout, io.NopCloser(bufferIn), bufferOut)
+	telnetClient := NewTelnetClient(connectionStr, timeout, os.Stdin, os.Stdout)
 	err = telnetClient.Connect()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "...Failed to connect to: %v\n", err)
 		os.Exit(1)
 	}
+	defer telnetClient.Close()
 
 	fmt.Fprintln(os.Stderr, "...Connected to", connectionStr)
 
-	wg := sync.WaitGroup{}
-	wg.Add(2)
+	res := make(chan error)
 
 	go func() {
-		defer cancel()
-		defer wg.Done()
-
-		scanner := bufio.NewScanner(os.Stdin)
-		for scanner.Scan() {
-			bufferIn.Reset()
-			bufferIn.Write(scanner.Bytes())
-			bufferIn.WriteString("\n")
-			err := telnetClient.Send()
-			if err != nil {
-				if ctx.Err() != nil {
-					return
-				}
-				fmt.Fprintln(os.Stderr, "...Failed to send data to the telnet client", err)
-				return
-			}
-		}
-
-		if ctx.Err() != nil {
-			return
-		}
-
-		if scanner.Err() != nil {
-			fmt.Fprintln(os.Stderr, "...Received error from scanner", scanner.Err())
-			return
-		}
-
-		fmt.Fprintln(os.Stderr, "...EOF")
-
-		// Даём возможность конкурентному чтение сделать запрос на чтение
-		time.Sleep(time.Second)
+		res <- telnetClient.Send()
 	}()
 
 	go func() {
-		defer cancel()
-		defer wg.Done()
-
-		for {
-			err := telnetClient.Receive()
-			if len(bufferOut.Bytes()) > 0 {
-				_, err = os.Stdout.Write(bufferOut.Bytes())
-				if err != nil {
-					fmt.Fprintln(os.Stderr, "...Failed to send data to STDOUT", err)
-					return
-				}
-				bufferOut.Reset()
-			}
-			if err != nil {
-				if ctx.Err() != nil {
-					return
-				}
-				if err == io.EOF {
-					fmt.Fprintln(os.Stderr, "...Connection was closed by peer")
-					return
-				}
-				fmt.Fprintln(os.Stderr, "...Failed to receive data from the telnet client", err)
-				return
-			}
-		}
+		res <- telnetClient.Receive()
 	}()
 
-	<-ctx.Done()
-	telnetClient.Close()
-	wg.Wait()
+	select {
+	case <-res:
+	case <-ctx.Done():
+	}
 }
 
-func parseConnectionString(osArgs []string) (string, error) {
-	connectionArgs := make([]string, 0, 2)
-	for i := 1; i < len(osArgs); i++ {
-		if strings.HasPrefix(osArgs[i], "-") {
-			continue
-		}
-		connectionArgs = append(connectionArgs, osArgs[i])
-	}
-
-	if len(connectionArgs) != 2 {
+func parseConnectionString(flagArgs []string) (string, error) {
+	if len(flagArgs) != 2 {
 		return "", ErrInvalidArgs
 	}
 
-	return fmt.Sprintf("%s:%s", connectionArgs[0], connectionArgs[1]), nil
+	return net.JoinHostPort(flagArgs[0], flagArgs[1]), nil
 }
