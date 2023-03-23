@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"flag"
+	"log"
 	"os"
 	"os/signal"
 	"syscall"
@@ -28,7 +29,10 @@ func main() {
 		return
 	}
 
-	config := NewConfig()
+	config, err := NewConfig()
+	if err != nil {
+		log.Fatal("failed to get config", err)
+	}
 	logg := logger.New(config.Logger.Level)
 
 	storage := memorystorage.New()
