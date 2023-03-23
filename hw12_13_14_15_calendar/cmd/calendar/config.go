@@ -13,6 +13,7 @@ import (
 type Config struct {
 	Logger  LoggerConf
 	Storage StorageConf
+	Http    HttpConf
 }
 
 type LoggerConf struct {
@@ -21,6 +22,10 @@ type LoggerConf struct {
 
 type StorageConf struct {
 	Type string
+}
+
+type HttpConf struct {
+	Host, Port string
 }
 
 func NewConfig() (config Config, err error) {

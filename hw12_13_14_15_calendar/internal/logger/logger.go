@@ -19,9 +19,9 @@ type Logger struct {
 func New(level string) (*Logger, error) {
 	var logLevel LogLevel
 	switch level {
-	case "info":
+	case "INFO":
 		logLevel = LogLevelInfo
-	case "error":
+	case "ERROR":
 		logLevel = LogLevelError
 	default:
 		return nil, fmt.Errorf("invalid log level: %s", level)
@@ -35,6 +35,16 @@ func (l *Logger) Info(msg string) {
 	}
 }
 
+func (l *Logger) Infof(f string, args ...any) {
+	if l.level == LogLevelInfo {
+		fmt.Fprintf(os.Stdout, f, args...)
+	}
+}
+
 func (l *Logger) Error(msg string) {
 	fmt.Fprintln(os.Stderr, msg)
+}
+
+func (l *Logger) Errorf(f string, args ...any) {
+	fmt.Fprintf(os.Stderr, f, args...)
 }

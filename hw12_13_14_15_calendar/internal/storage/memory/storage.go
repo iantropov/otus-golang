@@ -1,6 +1,9 @@
 package memorystorage
 
-import "sync"
+import (
+	"fmt"
+	"sync"
+)
 
 type Storage struct {
 	// TODO
@@ -8,6 +11,7 @@ type Storage struct {
 }
 
 func New() *Storage {
+	fmt.Println("Started in-memory storage!")
 	return &Storage{}
 }
 
