@@ -14,17 +14,21 @@ type Storage struct {
 	events []storage.Event
 }
 
+var _ storage.Storage = (*Storage)(nil)
+
 func New() *Storage {
 	fmt.Println("Started in-memory storage!")
 	return &Storage{}
 }
 
-func (s *Storage) Create(event storage.Event) {
+func (s *Storage) Create(event storage.Event) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	s.events = append(s.events, event)
 	s.sortEvents()
+
+	return nil
 }
 
 func (s *Storage) Update(id storage.EventId, event storage.Event) error {
@@ -56,17 +60,23 @@ func (s *Storage) Delete(id storage.EventId) error {
 	return nil
 }
 
-func (s *Storage) ListEventForDay(day time.Time) {
+func (s *Storage) ListEventForDay(day time.Time) []storage.Event {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.rangeEvents(day, day.AddDate(0, 0, 1))
+}
+
+func (s *Storage) ListEventForWeek(weekStart time.Time) []storage.Event {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	return selectEventsForRange(startTime, endTime)
+	return s.rangeEvents(weekStart, weekStart.AddDate(0, 0, 7))
 }
 
-func (s *Storage) ListEventForWeek(weekStart time.Time) {
-}
-
-func (s *Storage) ListEventForMonth(monthStart time.Time) {
+func (s *Storage) ListEventForMonth(monthStart time.Time) []storage.Event {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.rangeEvents(monthStart, monthStart.AddDate(0, 1, 0))
 }
 
 func (s *Storage) sortEvents() {
@@ -84,6 +94,32 @@ func (s *Storage) findEventIndex(id storage.EventId) int {
 		}
 	}
 	return eventIdx
+}
+
+func (s *Storage) rangeEvents(startTime time.Time, endTime time.Time) []storage.Event {
+	startIdx, endIdx := -1, -1
+
+	for i := range s.events {
+		if startIdx == -1 && !s.events[i].StartsAt.Before(startTime) {
+			startIdx = i
+		}
+		if startIdx > -1 && s.events[i].StartsAt.After(endTime) {
+			endIdx = i - 1
+			break
+		}
+	}
+
+	if startIdx == -1 {
+		return nil
+	}
+
+	if endIdx == -1 {
+		endIdx = len(s.events)
+	}
+
+	eventsCopy := make([]storage.Event, endIdx-startIdx+1)
+	copy(eventsCopy, s.events[startIdx:endIdx])
+	return eventsCopy
 }
 
 // TODO
