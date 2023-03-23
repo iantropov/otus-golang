@@ -37,20 +37,21 @@ func main() {
 
 	fmt.Fprintln(os.Stderr, "...Connected to", connectionStr)
 
-	res := make(chan error)
-
 	go func() {
-		res <- telnetClient.Send()
+		defer cancel()
+		if err := telnetClient.Send(); err != nil {
+			fmt.Fprintf(os.Stderr, "...received error from send: %v\n", err)
+		}
 	}()
 
 	go func() {
-		res <- telnetClient.Receive()
+		defer cancel()
+		if err := telnetClient.Receive(); err != nil {
+			fmt.Fprintf(os.Stderr, "...received error from receive: %v\n", err)
+		}
 	}()
 
-	select {
-	case <-res:
-	case <-ctx.Done():
-	}
+	<-ctx.Done()
 }
 
 func parseConnectionString(flagArgs []string) (string, error) {
