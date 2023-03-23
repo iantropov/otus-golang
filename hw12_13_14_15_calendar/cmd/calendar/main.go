@@ -33,7 +33,10 @@ func main() {
 	if err != nil {
 		log.Fatal("failed to get config", err)
 	}
-	logg := logger.New(config.Logger.Level)
+	logg, err := logger.New(config.Logger.Level)
+	if err != nil {
+		log.Fatal("failed to create logger", err)
+	}
 
 	storage := memorystorage.New()
 	calendar := app.New(logg, storage)

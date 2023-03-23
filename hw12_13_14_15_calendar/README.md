@@ -15,10 +15,10 @@
 
 ## Roadmap
 
-- config
-  - read file
-  - parse
-  - populate config
++ config
+  + read file
+  + parse
+  + populate config
 - logs
   - use config
   - impl
