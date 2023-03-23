@@ -4,40 +4,33 @@ import (
 	"fmt"
 	"os"
 
-	"gopkg.in/yaml.v3"
+	toml "github.com/pelletier/go-toml"
 )
 
 // При желании конфигурацию можно вынести в internal/config.
 // Организация конфига в main принуждает нас сужать API компонентов, использовать
 // при их конструировании только необходимые параметры, а также уменьшает вероятность циклической зависимости.
 type Config struct {
-	Logger  LoggerConf  `yaml:"logger"`
-	Storage StorageConf `yaml:"storage"`
+	Logger  LoggerConf
+	Storage StorageConf
 }
 
 type LoggerConf struct {
-	Level string `yaml:"level"`
+	Level string
 }
 
-type StorageType string
-
-const (
-	StorageTypeMemory StorageType = "memory"
-	StorageTypeSql    StorageType = "sql"
-)
-
 type StorageConf struct {
-	Type StorageType `yaml:"type"`
+	Type string
 }
 
 func NewConfig() (config Config, err error) {
-	rawYaml, err := os.ReadFile("config.yml")
+	rawToml, err := os.ReadFile("configs/config.toml")
 	if err != nil {
 		err = fmt.Errorf("failed to read config file: %w", err)
 		return
 	}
 
-	err = yaml.Unmarshal(rawYaml, &config)
+	err = toml.Unmarshal(rawToml, &config)
 	if err != nil {
 		err = fmt.Errorf("failed to parse config: %w", err)
 		return
