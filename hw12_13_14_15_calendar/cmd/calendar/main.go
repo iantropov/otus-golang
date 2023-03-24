@@ -29,7 +29,7 @@ func main() {
 		return
 	}
 
-	config, err := NewConfig()
+	config, err := NewConfig(configFile)
 	if err != nil {
 		log.Fatal("failed to get config", err)
 	}

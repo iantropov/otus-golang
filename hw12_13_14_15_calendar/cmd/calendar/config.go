@@ -28,8 +28,8 @@ type HttpConf struct {
 	Host, Port string
 }
 
-func NewConfig() (config Config, err error) {
-	rawToml, err := os.ReadFile("configs/config.toml")
+func NewConfig(path string) (config Config, err error) {
+	rawToml, err := os.ReadFile(path)
 	if err != nil {
 		err = fmt.Errorf("failed to read config file: %w", err)
 		return
