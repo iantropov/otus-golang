@@ -1,7 +1,7 @@
 package memorystorage
 
 import (
-	"fmt"
+	"errors"
 	"sort"
 	"sync"
 	"time"
@@ -10,20 +10,42 @@ import (
 )
 
 type Storage struct {
-	mu     sync.RWMutex
-	events []storage.Event
+	mu           sync.RWMutex
+	sortedEvents []*storage.Event
+	eventsMap    map[storage.EventId]storage.Event
 }
 
 var _ storage.Storage = (*Storage)(nil)
 
+var (
+	ErrDateBusy      = errors.New("date is already taken")
+	ErrEventNotFound = errors.New("event not found")
+	ErrInvalidEvent  = errors.New("invalid event")
+	ErrIdBudy        = errors.New("id is already taken")
+)
+
 func New() *Storage {
-	fmt.Println("Started in-memory storage!")
-	return &Storage{}
+	eventsMap := make(map[storage.EventId]int)
+	return &Storage{
+		eventsMap: eventsMap,
+	}
 }
 
 func (s *Storage) Create(event storage.Event) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
+	if !s.isValidEvent(event) {
+		return ErrInvalidEvent
+	}
+
+	if _, exists := s.eventsMap[event.Id]; exists {
+		return ErrIdBudy
+	}
+
+	if s.findEventIndexByDate(event.StartsAt) != -1 {
+		return ErrDateBusy
+	}
 
 	s.events = append(s.events, event)
 	s.sortEvents()
@@ -35,12 +57,17 @@ func (s *Storage) Update(id storage.EventId, event storage.Event) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	eventIdx := s.findEventIndex(id)
-	if eventIdx == -1 {
-		return fmt.Errorf("event: %v not found", id)
+	updatingEventIdx := s.findEventIndexById(id)
+	if updatingEventIdx == -1 {
+		return ErrEventNotFound
 	}
 
-	s.events[eventIdx] = event
+	conflictingEventIdx := s.findEventIndexByDate(event.StartsAt)
+	if conflictingEventIdx != -1 {
+		return ErrDateBusy
+	}
+
+	s.events[updatingEventIdx] = event
 	s.sortEvents()
 
 	return nil
@@ -50,9 +77,13 @@ func (s *Storage) Delete(id storage.EventId) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	eventIdx := s.findEventIndex(id)
+	if _, exists := s.eventsMap[event.Id]; exists {
+		return ErrIdBudy
+	}
+
+	eventIdx := s.findEventIndexById(id)
 	if eventIdx == -1 {
-		return fmt.Errorf("event: %v not found", id)
+		return ErrEventNotFound
 	}
 
 	s.events = append(s.events[:eventIdx], s.events[eventIdx+1:]...)
@@ -79,21 +110,44 @@ func (s *Storage) ListEventForMonth(monthStart time.Time) []storage.Event {
 	return s.rangeEvents(monthStart, monthStart.AddDate(0, 1, 0))
 }
 
+func (s *Storage) isValidEvent(event storage.Event) bool {
+	if event.Id == "" || event.Title == "" || event.Description == "" {
+		return false
+	}
+
+	if !event.StartsAt.Before(event.EndsAt) {
+		return false
+	}
+
+	if !event.StartsAt.After(time.Now()) {
+		return false
+	}
+
+	return true
+}
+
+func (s *Storage) findEventIndexByDate(date time.Time) int {
+	for i := range s.events {
+		if s.events[i].StartsAt == date {
+			return i
+		}
+	}
+	return -1
+}
+
 func (s *Storage) sortEvents() {
 	sort.Slice(s.events, func(i, j int) bool {
 		return s.events[i].StartsAt.Before(s.events[j].StartsAt)
 	})
 }
 
-func (s *Storage) findEventIndex(id storage.EventId) int {
-	eventIdx := -1
+func (s *Storage) findEventIndexById(id storage.EventId) int {
 	for i := range s.events {
 		if s.events[i].Id == id {
-			eventIdx = i
-			break
+			return i
 		}
 	}
-	return eventIdx
+	return -1
 }
 
 func (s *Storage) rangeEvents(startTime time.Time, endTime time.Time) []storage.Event {
