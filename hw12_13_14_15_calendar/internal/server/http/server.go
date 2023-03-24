@@ -8,9 +8,10 @@ import (
 	"net/http"
 )
 
-type Server struct { // TODO
+type Server struct {
 	host, port string
 	logger     Logger
+	server     http.Server
 }
 
 type Logger interface {
@@ -23,33 +24,31 @@ type Logger interface {
 type Application interface { // TODO
 }
 
+type serverContext string
+
+const statusCodeKey = serverContext("statusCode")
+
 func NewServer(host, port string, logger Logger, app Application) *Server {
-	return &Server{host, port, logger}
+	return &Server{
+		host:   host,
+		port:   port,
+		logger: logger,
+	}
 }
 
-type loggerKey string
-
-const logger loggerKey = "logger"
-
 func (s *Server) Start(startCtx context.Context) error {
-
 	go func() {
 		mux := http.NewServeMux()
 
-		mux.HandleFunc("/hello", getHello)
+		mux.HandleFunc("/hello", s.getHello)
 
-		server := &http.Server{
+		s.server = http.Server{
 			Addr:    net.JoinHostPort(s.host, s.port),
-			Handler: mux,
-			BaseContext: func(l net.Listener) context.Context {
-				requestCtx := context.WithValue(startCtx, logger, s.logger)
-				return requestCtx
-			},
+			Handler: loggingMiddleware(s.logger, mux),
 		}
 
 		s.logger.Infof("listening http at %s:%s\n", s.host, s.port)
-
-		server.ListenAndServe()
+		s.server.ListenAndServe()
 	}()
 
 	<-startCtx.Done()
@@ -58,11 +57,19 @@ func (s *Server) Start(startCtx context.Context) error {
 }
 
 func (s *Server) Stop(ctx context.Context) error {
-	// TODO
-	return nil
+	return s.server.Close()
 }
 
-func getHello(w http.ResponseWriter, r *http.Request) {
+func (s *Server) getHello(w http.ResponseWriter, r *http.Request) {
 	fmt.Printf("got /hello request\n")
+
+	s.setResponseCode(w, r, 200)
 	io.WriteString(w, "Hello, HTTP!\n")
+}
+
+func (s *Server) setResponseCode(w http.ResponseWriter, r *http.Request, statusCode int) {
+	ctx := context.WithValue(r.Context(), statusCodeKey, statusCode)
+	*r = *(r.WithContext(ctx))
+
+	w.WriteHeader(statusCode)
 }
