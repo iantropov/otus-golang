@@ -2,7 +2,6 @@ package memorystorage
 
 import (
 	"errors"
-	"sort"
 	"sync"
 	"time"
 
@@ -10,24 +9,27 @@ import (
 )
 
 type Storage struct {
-	mu           sync.RWMutex
-	sortedEvents []*storage.Event
-	eventsMap    map[storage.EventId]storage.Event
+	mu                sync.RWMutex
+	eventsByIdMap     map[storage.EventId]storage.Event
+	eventsStartsAtMap map[time.Time]storage.EventId
 }
 
 var _ storage.Storage = (*Storage)(nil)
 
 var (
-	ErrDateBusy      = errors.New("date is already taken")
-	ErrEventNotFound = errors.New("event not found")
-	ErrInvalidEvent  = errors.New("invalid event")
-	ErrIdBudy        = errors.New("id is already taken")
+	ErrDateBusy       = errors.New("date is already taken")
+	ErrEventNotFound  = errors.New("event not found")
+	ErrInvalidEvent   = errors.New("invalid event")
+	ErrInvalidEventId = errors.New("invalid event id")
+	ErrIdBusy         = errors.New("id is already taken")
 )
 
 func New() *Storage {
-	eventsMap := make(map[storage.EventId]int)
+	eventsByIdMap := make(map[storage.EventId]storage.Event)
+	eventsStartsAtMap := make(map[time.Time]storage.EventId)
 	return &Storage{
-		eventsMap: eventsMap,
+		eventsByIdMap:     eventsByIdMap,
+		eventsStartsAtMap: eventsStartsAtMap,
 	}
 }
 
@@ -39,36 +41,58 @@ func (s *Storage) Create(event storage.Event) error {
 		return ErrInvalidEvent
 	}
 
-	if _, exists := s.eventsMap[event.Id]; exists {
-		return ErrIdBudy
+	if _, exists := s.eventsByIdMap[event.Id]; exists {
+		return ErrIdBusy
 	}
 
-	if s.findEventIndexByDate(event.StartsAt) != -1 {
+	if _, exists := s.eventsStartsAtMap[event.StartsAt]; exists {
 		return ErrDateBusy
 	}
 
-	s.events = append(s.events, event)
-	s.sortEvents()
+	s.eventsByIdMap[event.Id] = event
+	s.eventsStartsAtMap[event.StartsAt] = event.Id
 
 	return nil
+}
+
+func (s *Storage) Get(id storage.EventId) (storage.Event, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	event, exists := s.eventsByIdMap[id]
+	if !exists {
+		return storage.Event{}, ErrEventNotFound
+	}
+
+	return event, nil
 }
 
 func (s *Storage) Update(id storage.EventId, event storage.Event) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	updatingEventIdx := s.findEventIndexById(id)
-	if updatingEventIdx == -1 {
+	if !s.isValidEvent(event) {
+		return ErrInvalidEvent
+	}
+
+	if id != event.Id {
+		return ErrInvalidEventId
+	}
+
+	existingEvent, exists := s.eventsByIdMap[id]
+	if !exists {
 		return ErrEventNotFound
 	}
 
-	conflictingEventIdx := s.findEventIndexByDate(event.StartsAt)
-	if conflictingEventIdx != -1 {
+	conflictingEventId := s.eventsStartsAtMap[event.StartsAt]
+	if conflictingEventId != id {
 		return ErrDateBusy
 	}
 
-	s.events[updatingEventIdx] = event
-	s.sortEvents()
+	delete(s.eventsStartsAtMap, existingEvent.StartsAt)
+
+	s.eventsByIdMap[id] = event
+	s.eventsStartsAtMap[event.StartsAt] = id
 
 	return nil
 }
@@ -77,16 +101,13 @@ func (s *Storage) Delete(id storage.EventId) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	if _, exists := s.eventsMap[event.Id]; exists {
-		return ErrIdBudy
-	}
-
-	eventIdx := s.findEventIndexById(id)
-	if eventIdx == -1 {
+	existingEvent, exists := s.eventsByIdMap[id]
+	if !exists {
 		return ErrEventNotFound
 	}
 
-	s.events = append(s.events[:eventIdx], s.events[eventIdx+1:]...)
+	delete(s.eventsStartsAtMap, existingEvent.StartsAt)
+	delete(s.eventsByIdMap, id)
 
 	return nil
 }
@@ -100,7 +121,6 @@ func (s *Storage) ListEventForDay(day time.Time) []storage.Event {
 func (s *Storage) ListEventForWeek(weekStart time.Time) []storage.Event {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-
 	return s.rangeEvents(weekStart, weekStart.AddDate(0, 0, 7))
 }
 
@@ -126,54 +146,16 @@ func (s *Storage) isValidEvent(event storage.Event) bool {
 	return true
 }
 
-func (s *Storage) findEventIndexByDate(date time.Time) int {
-	for i := range s.events {
-		if s.events[i].StartsAt == date {
-			return i
-		}
-	}
-	return -1
-}
-
-func (s *Storage) sortEvents() {
-	sort.Slice(s.events, func(i, j int) bool {
-		return s.events[i].StartsAt.Before(s.events[j].StartsAt)
-	})
-}
-
-func (s *Storage) findEventIndexById(id storage.EventId) int {
-	for i := range s.events {
-		if s.events[i].Id == id {
-			return i
-		}
-	}
-	return -1
-}
-
 func (s *Storage) rangeEvents(startTime time.Time, endTime time.Time) []storage.Event {
-	startIdx, endIdx := -1, -1
+	res := make([]storage.Event, 0)
 
-	for i := range s.events {
-		if startIdx == -1 && !s.events[i].StartsAt.Before(startTime) {
-			startIdx = i
-		}
-		if startIdx > -1 && s.events[i].StartsAt.After(endTime) {
-			endIdx = i - 1
-			break
+	for _, event := range s.eventsByIdMap {
+		if !event.StartsAt.Before(startTime) && !event.StartsAt.After(endTime) {
+			res = append(res, event)
 		}
 	}
 
-	if startIdx == -1 {
-		return nil
-	}
-
-	if endIdx == -1 {
-		endIdx = len(s.events)
-	}
-
-	eventsCopy := make([]storage.Event, endIdx-startIdx+1)
-	copy(eventsCopy, s.events[startIdx:endIdx])
-	return eventsCopy
+	return res
 }
 
 // TODO

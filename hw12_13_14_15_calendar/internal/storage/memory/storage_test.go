@@ -13,16 +13,36 @@ func TestStorageBusinessLogic(t *testing.T) {
 	memStorage := New()
 
 	event := storage.Event{
-		StartsAt:     time.Now().Add(time.Minute),
-		EndsAt:       time.Now().Add(time.Hour),
+		StartsAt:     time.Date(2033, 6, 1, 0, 0, 0, 0, time.Local),
+		EndsAt:       time.Date(2033, 6, 2, 0, 0, 0, 0, time.Local),
 		Title:        gofakeit.FarmAnimal(),
 		Description:  gofakeit.Adjective(),
 		Id:           storage.EventId(gofakeit.UUID()),
 		UserId:       gofakeit.Email(),
 		NotifyBefore: time.Second * 2,
 	}
-	err := memStorage.Create()
 
+	err := memStorage.Create(event)
 	require.Equal(t, nil, err)
 
+	resEvent, err := memStorage.Get(event.Id)
+	require.Equal(t, event, resEvent)
+	require.Equal(t, nil, err)
+
+	event.UserId = gofakeit.Email()
+	err = memStorage.Update(event.Id, event)
+	require.Equal(t, nil, err)
+
+	resEvent, err = memStorage.Get(event.Id)
+	require.Equal(t, event, resEvent)
+	require.Equal(t, nil, err)
+
+	resEvents := memStorage.ListEventForDay(time.Date(2033, 6, 1, 0, 0, 0, 0, time.Local))
+	require.Equal(t, []storage.Event{event}, resEvents)
+
+	err = memStorage.Delete(event.Id)
+	require.Equal(t, nil, err)
+
+	_, err = memStorage.Get(event.Id)
+	require.Equal(t, ErrEventNotFound, err)
 }
