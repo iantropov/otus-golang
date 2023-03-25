@@ -227,6 +227,42 @@ func TestStorageUpdate(t *testing.T) {
 	}
 }
 
+func TestStorageDelete(t *testing.T) {
+	existingEvent := buildEventWith(map[string]any{
+		"StartsAt": date(2035, 6, 2),
+		"EndsAt":   date(2035, 6, 3),
+	})
+
+	tests := []struct {
+		title   string
+		eventId storage.EventId
+		err     error
+	}{
+		{
+			title:   "positive case",
+			eventId: existingEvent.Id,
+			err:     nil,
+		},
+		{
+			title:   "event not found",
+			eventId: "123",
+			err:     ErrEventNotFound,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.title, func(t *testing.T) {
+			memStorage := New()
+
+			err := memStorage.Create(existingEvent)
+			require.Equal(t, nil, err)
+
+			err = memStorage.Delete(tt.eventId)
+			require.Equal(t, tt.err, err)
+		})
+	}
+}
+
 func buildEvent() storage.Event {
 	return storage.Event{
 		StartsAt:     date(2033, 6, 1),
