@@ -301,6 +301,91 @@ func TestStorageDelete(t *testing.T) {
 	}
 }
 
+func TestStorageListEventForDay(t *testing.T) {
+	date := date(2050, 1, 1)
+	events := []storage.Event{
+		buildEventWith(map[string]any{
+			"StartsAt": date.Add(time.Minute),
+			"EndsAt":   date.Add(time.Minute * 2),
+		}),
+		buildEventWith(map[string]any{
+			"StartsAt": date.Add(time.Minute * 3),
+			"EndsAt":   date.Add(time.Minute * 4),
+		}),
+		buildEventWith(map[string]any{
+			"StartsAt": date.AddDate(0, 0, 1),
+			"EndsAt":   date.AddDate(0, 0, 2),
+		}),
+	}
+
+	memStorage := New()
+	for i := range events {
+		err := memStorage.Create(events[i])
+		require.Equal(t, nil, err)
+	}
+
+	dayEvents := memStorage.ListEventForDay(date)
+	require.ElementsMatch(t, dayEvents, []storage.Event{events[0], events[1]})
+}
+
+func TestStorageListEventForWeek(t *testing.T) {
+	date := date(2050, 1, 1)
+	events := []storage.Event{
+		buildEventWith(map[string]any{
+			"StartsAt": date.AddDate(0, 0, 1),
+			"EndsAt":   date.AddDate(0, 0, 2),
+		}),
+		buildEventWith(map[string]any{
+			"StartsAt": date.AddDate(0, 0, 3),
+			"EndsAt":   date.AddDate(0, 0, 4),
+		}),
+		buildEventWith(map[string]any{
+			"StartsAt": date.AddDate(0, 0, 5),
+			"EndsAt":   date.AddDate(0, 0, 15),
+		}),
+		buildEventWith(map[string]any{
+			"StartsAt": date.AddDate(0, 0, 25),
+			"EndsAt":   date.AddDate(0, 0, 35),
+		}),
+	}
+
+	memStorage := New()
+	for i := range events {
+		err := memStorage.Create(events[i])
+		require.Equal(t, nil, err)
+	}
+
+	weekEvents := memStorage.ListEventForWeek(date)
+	require.ElementsMatch(t, weekEvents, []storage.Event{events[0], events[1], events[2]})
+}
+
+func TestStorageListEventFoMonth(t *testing.T) {
+	date := date(2050, 1, 1)
+	events := []storage.Event{
+		buildEventWith(map[string]any{
+			"StartsAt": date.AddDate(0, 0, 1),
+			"EndsAt":   date.AddDate(0, 0, 2),
+		}),
+		buildEventWith(map[string]any{
+			"StartsAt": date.AddDate(0, 0, 15),
+			"EndsAt":   date.AddDate(0, 0, 50),
+		}),
+		buildEventWith(map[string]any{
+			"StartsAt": date.AddDate(0, 0, 65),
+			"EndsAt":   date.AddDate(0, 0, 85),
+		}),
+	}
+
+	memStorage := New()
+	for i := range events {
+		err := memStorage.Create(events[i])
+		require.Equal(t, nil, err)
+	}
+
+	weekEvents := memStorage.ListEventForMonth(date)
+	require.ElementsMatch(t, weekEvents, []storage.Event{events[0], events[1]})
+}
+
 func buildEvent() storage.Event {
 	return storage.Event{
 		StartsAt:     date(2033, 6, 1),

@@ -150,7 +150,7 @@ func (s *Storage) rangeEvents(startTime time.Time, endTime time.Time) []storage.
 	res := make([]storage.Event, 0)
 
 	for _, event := range s.eventsByIdMap {
-		if !event.StartsAt.Before(startTime) && !event.StartsAt.After(endTime) {
+		if !event.StartsAt.Before(startTime) && event.StartsAt.Before(endTime) {
 			res = append(res, event)
 		}
 	}
