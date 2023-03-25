@@ -84,8 +84,8 @@ func (s *Storage) Update(id storage.EventId, event storage.Event) error {
 		return ErrEventNotFound
 	}
 
-	conflictingEventId := s.eventsStartsAtMap[event.StartsAt]
-	if conflictingEventId != id {
+	conflictingEventId, exists := s.eventsStartsAtMap[event.StartsAt]
+	if exists && conflictingEventId != id {
 		return ErrDateBusy
 	}
 
