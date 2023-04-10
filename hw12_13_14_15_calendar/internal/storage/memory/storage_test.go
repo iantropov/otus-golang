@@ -388,20 +388,20 @@ func TestStorageListEventFoMonth(t *testing.T) {
 }
 
 func TestStorageConcurrentReadsAndWrites(t *testing.T) {
-	const ITERATIONS_COUNT = 1_000_000
+	const iterationsCount = 1_000_000
 
 	date := date(2050, 1, 1)
 	memStorage := New()
 	wg := sync.WaitGroup{}
 	wg.Add(2)
 
-	eventIDs := make([]storage.EventID, ITERATIONS_COUNT)
-	for i := 0; i < ITERATIONS_COUNT; i++ {
+	eventIDs := make([]storage.EventID, iterationsCount)
+	for i := 0; i < iterationsCount; i++ {
 		eventIDs[i] = storage.EventID(gofakeit.UUID())
 	}
 
-	events := make([]storage.Event, ITERATIONS_COUNT)
-	for i := 0; i < ITERATIONS_COUNT; i++ {
+	events := make([]storage.Event, iterationsCount)
+	for i := 0; i < iterationsCount; i++ {
 		events[i] = buildEventWith(map[string]any{
 			"ID":       eventIDs[i],
 			"StartsAt": date,
@@ -411,14 +411,14 @@ func TestStorageConcurrentReadsAndWrites(t *testing.T) {
 
 	go func() {
 		defer wg.Done()
-		for i := 0; i < ITERATIONS_COUNT; i++ {
+		for i := 0; i < iterationsCount; i++ {
 			memStorage.Create(events[i])
 		}
 	}()
 
 	go func() {
 		defer wg.Done()
-		for i := 0; i < ITERATIONS_COUNT; i++ {
+		for i := 0; i < iterationsCount; i++ {
 			memStorage.Update(eventIDs[i], buildEventWith(map[string]any{
 				"StartsAt": events[i].StartsAt,
 				"EndsAt":   events[i].EndsAt,
@@ -430,7 +430,7 @@ func TestStorageConcurrentReadsAndWrites(t *testing.T) {
 
 	go func() {
 		defer wg.Done()
-		for i := 0; i < ITERATIONS_COUNT; i++ {
+		for i := 0; i < iterationsCount; i++ {
 			memStorage.Delete(eventIDs[i])
 		}
 	}()
