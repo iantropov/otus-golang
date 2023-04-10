@@ -2,14 +2,14 @@ package storage
 
 import "time"
 
-type EventId string
+type EventID string
 
 type Event struct {
-	Id           EventId
+	ID           EventID
 	Title        string
 	StartsAt     time.Time
 	EndsAt       time.Time
 	Description  string
-	UserId       string
+	UserID       string
 	NotifyBefore time.Duration
 }

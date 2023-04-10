@@ -6,6 +6,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"time"
 )
 
 type Server struct {
@@ -43,8 +44,9 @@ func (s *Server) Start(startCtx context.Context) error {
 		mux.HandleFunc("/hello", s.getHello)
 
 		s.server = http.Server{
-			Addr:    net.JoinHostPort(s.host, s.port),
-			Handler: loggingMiddleware(s.logger, mux),
+			Addr:              net.JoinHostPort(s.host, s.port),
+			Handler:           loggingMiddleware(s.logger, mux),
+			ReadHeaderTimeout: time.Minute,
 		}
 
 		s.logger.Infof("listening http at %s:%s\n", s.host, s.port)

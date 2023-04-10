@@ -17,25 +17,25 @@ func TestStorageBusinessLogic(t *testing.T) {
 	err := memStorage.Create(event)
 	require.Equal(t, nil, err)
 
-	resEvent, err := memStorage.Get(event.Id)
+	resEvent, err := memStorage.Get(event.ID)
 	require.Equal(t, event, resEvent)
 	require.Equal(t, nil, err)
 
-	event.UserId = gofakeit.Email()
-	err = memStorage.Update(event.Id, event)
+	event.UserID = gofakeit.Email()
+	err = memStorage.Update(event.ID, event)
 	require.Equal(t, nil, err)
 
-	resEvent, err = memStorage.Get(event.Id)
+	resEvent, err = memStorage.Get(event.ID)
 	require.Equal(t, event, resEvent)
 	require.Equal(t, nil, err)
 
 	resEvents := memStorage.ListEventForDay(date(2033, 6, 1))
 	require.Equal(t, []storage.Event{event}, resEvents)
 
-	err = memStorage.Delete(event.Id)
+	err = memStorage.Delete(event.ID)
 	require.Equal(t, nil, err)
 
-	_, err = memStorage.Get(event.Id)
+	_, err = memStorage.Get(event.ID)
 	require.Equal(t, ErrEventNotFound, err)
 }
 
@@ -74,7 +74,7 @@ func TestStorageValidateEvent(t *testing.T) {
 		{
 			title: "invalid event (without id)",
 			event: buildEventWith(map[string]any{
-				"Id": storage.EventId(""),
+				"ID": storage.EventID(""),
 			}),
 			isValid: false,
 		},
@@ -127,9 +127,9 @@ func TestStorageCreate(t *testing.T) {
 		{
 			title: "duplicated id",
 			event: buildEventWith(map[string]any{
-				"Id": existingEvent.Id,
+				"ID": existingEvent.ID,
 			}),
-			err: ErrIdBusy,
+			err: ErrIDBusy,
 		},
 		{
 			title: "duplicated StartsAt",
@@ -162,18 +162,18 @@ func TestStorageGet(t *testing.T) {
 
 	tests := []struct {
 		title   string
-		eventId storage.EventId
+		eventID storage.EventID
 		event   storage.Event
 		err     error
 	}{
 		{
 			title:   "positive case",
-			eventId: existingEvent.Id,
+			eventID: existingEvent.ID,
 			event:   existingEvent,
 		},
 		{
 			title:   "event not found",
-			eventId: "123",
+			eventID: "123",
 			err:     ErrEventNotFound,
 		},
 	}
@@ -185,7 +185,7 @@ func TestStorageGet(t *testing.T) {
 			err := memStorage.Create(existingEvent)
 			require.Equal(t, nil, err)
 
-			event, err := memStorage.Get(tt.eventId)
+			event, err := memStorage.Get(tt.eventID)
 			require.Equal(t, tt.event, event)
 			require.Equal(t, tt.err, err)
 		})
@@ -205,43 +205,43 @@ func TestStorageUpdate(t *testing.T) {
 
 	tests := []struct {
 		title   string
-		eventId storage.EventId
+		eventID storage.EventID
 		event   storage.Event
 		err     error
 	}{
 		{
 			title:   "positive case",
-			eventId: existingEvent.Id,
+			eventID: existingEvent.ID,
 			event: buildEventWith(map[string]any{
-				"Id": existingEvent.Id,
+				"ID": existingEvent.ID,
 			}),
 			err: nil,
 		},
 		{
 			title:   "invalid event",
-			eventId: existingEvent.Id,
+			eventID: existingEvent.ID,
 			event:   storage.Event{},
 			err:     ErrInvalidEvent,
 		},
 		{
 			title:   "invalid event id",
-			eventId: existingEvent.Id,
+			eventID: existingEvent.ID,
 			event:   buildEvent(),
-			err:     ErrInvalidEventId,
+			err:     ErrInvalidEventID,
 		},
 		{
 			title:   "event not found",
-			eventId: "123",
+			eventID: "123",
 			event: buildEventWith(map[string]any{
-				"Id": storage.EventId("123"),
+				"ID": storage.EventID("123"),
 			}),
 			err: ErrEventNotFound,
 		},
 		{
 			title:   "duplicated StartsAt",
-			eventId: existingEvent.Id,
+			eventID: existingEvent.ID,
 			event: buildEventWith(map[string]any{
-				"Id":       existingEvent.Id,
+				"ID":       existingEvent.ID,
 				"StartsAt": existingEvent2.StartsAt,
 				"EndsAt":   existingEvent2.StartsAt.Add(time.Hour),
 			}),
@@ -259,7 +259,7 @@ func TestStorageUpdate(t *testing.T) {
 			err = memStorage.Create(existingEvent2)
 			require.Equal(t, nil, err)
 
-			err = memStorage.Update(tt.eventId, tt.event)
+			err = memStorage.Update(tt.eventID, tt.event)
 			require.Equal(t, tt.err, err)
 		})
 	}
@@ -273,17 +273,17 @@ func TestStorageDelete(t *testing.T) {
 
 	tests := []struct {
 		title   string
-		eventId storage.EventId
+		eventID storage.EventID
 		err     error
 	}{
 		{
 			title:   "positive case",
-			eventId: existingEvent.Id,
+			eventID: existingEvent.ID,
 			err:     nil,
 		},
 		{
 			title:   "event not found",
-			eventId: "123",
+			eventID: "123",
 			err:     ErrEventNotFound,
 		},
 	}
@@ -295,7 +295,7 @@ func TestStorageDelete(t *testing.T) {
 			err := memStorage.Create(existingEvent)
 			require.Equal(t, nil, err)
 
-			err = memStorage.Delete(tt.eventId)
+			err = memStorage.Delete(tt.eventID)
 			require.Equal(t, tt.err, err)
 		})
 	}
@@ -392,8 +392,8 @@ func buildEvent() storage.Event {
 		EndsAt:       date(2033, 6, 2),
 		Title:        gofakeit.FarmAnimal(),
 		Description:  gofakeit.Adjective(),
-		Id:           storage.EventId(gofakeit.UUID()),
-		UserId:       gofakeit.Email(),
+		ID:           storage.EventID(gofakeit.UUID()),
+		UserID:       gofakeit.Email(),
 		NotifyBefore: time.Second * 2,
 	}
 }
@@ -403,8 +403,8 @@ func buildEventWith(attrs map[string]any) storage.Event {
 
 	for key := range attrs {
 		switch key {
-		case "Id":
-			event.Id = attrs[key].(storage.EventId)
+		case "ID":
+			event.ID = attrs[key].(storage.EventID)
 		case "StartsAt":
 			event.StartsAt = attrs[key].(time.Time)
 		case "EndsAt":

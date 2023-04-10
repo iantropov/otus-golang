@@ -13,7 +13,7 @@ import (
 type Config struct {
 	Logger  LoggerConf
 	Storage StorageConf
-	Http    HttpConf
+	HTTP    HTTPConf
 }
 
 type LoggerConf struct {
@@ -24,7 +24,7 @@ type StorageConf struct {
 	Type string
 }
 
-type HttpConf struct {
+type HTTPConf struct {
 	Host, Port string
 }
 

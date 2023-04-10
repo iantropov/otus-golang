@@ -10,8 +10,8 @@ import (
 
 type Storage struct {
 	mu                sync.RWMutex
-	eventsByIdMap     map[storage.EventId]storage.Event
-	eventsStartsAtMap map[time.Time]storage.EventId
+	eventsByIDMap     map[storage.EventID]storage.Event
+	eventsStartsAtMap map[time.Time]storage.EventID
 }
 
 var _ storage.Storage = (*Storage)(nil)
@@ -20,15 +20,15 @@ var (
 	ErrDateBusy       = errors.New("date is already taken")
 	ErrEventNotFound  = errors.New("event not found")
 	ErrInvalidEvent   = errors.New("invalid event")
-	ErrInvalidEventId = errors.New("invalid event id")
-	ErrIdBusy         = errors.New("id is already taken")
+	ErrInvalidEventID = errors.New("invalid event ID")
+	ErrIDBusy         = errors.New("id is already taken")
 )
 
 func New() *Storage {
-	eventsByIdMap := make(map[storage.EventId]storage.Event)
-	eventsStartsAtMap := make(map[time.Time]storage.EventId)
+	eventsByIDMap := make(map[storage.EventID]storage.Event)
+	eventsStartsAtMap := make(map[time.Time]storage.EventID)
 	return &Storage{
-		eventsByIdMap:     eventsByIdMap,
+		eventsByIDMap:     eventsByIDMap,
 		eventsStartsAtMap: eventsStartsAtMap,
 	}
 }
@@ -41,25 +41,25 @@ func (s *Storage) Create(event storage.Event) error {
 		return ErrInvalidEvent
 	}
 
-	if _, exists := s.eventsByIdMap[event.Id]; exists {
-		return ErrIdBusy
+	if _, exists := s.eventsByIDMap[event.ID]; exists {
+		return ErrIDBusy
 	}
 
 	if _, exists := s.eventsStartsAtMap[event.StartsAt]; exists {
 		return ErrDateBusy
 	}
 
-	s.eventsByIdMap[event.Id] = event
-	s.eventsStartsAtMap[event.StartsAt] = event.Id
+	s.eventsByIDMap[event.ID] = event
+	s.eventsStartsAtMap[event.StartsAt] = event.ID
 
 	return nil
 }
 
-func (s *Storage) Get(id storage.EventId) (storage.Event, error) {
+func (s *Storage) Get(id storage.EventID) (storage.Event, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	event, exists := s.eventsByIdMap[id]
+	event, exists := s.eventsByIDMap[id]
 	if !exists {
 		return storage.Event{}, ErrEventNotFound
 	}
@@ -67,7 +67,7 @@ func (s *Storage) Get(id storage.EventId) (storage.Event, error) {
 	return event, nil
 }
 
-func (s *Storage) Update(id storage.EventId, event storage.Event) error {
+func (s *Storage) Update(id storage.EventID, event storage.Event) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -75,39 +75,39 @@ func (s *Storage) Update(id storage.EventId, event storage.Event) error {
 		return ErrInvalidEvent
 	}
 
-	if id != event.Id {
-		return ErrInvalidEventId
+	if id != event.ID {
+		return ErrInvalidEventID
 	}
 
-	existingEvent, exists := s.eventsByIdMap[id]
+	existingEvent, exists := s.eventsByIDMap[id]
 	if !exists {
 		return ErrEventNotFound
 	}
 
-	conflictingEventId, exists := s.eventsStartsAtMap[event.StartsAt]
-	if exists && conflictingEventId != id {
+	conflictingEventID, exists := s.eventsStartsAtMap[event.StartsAt]
+	if exists && conflictingEventID != id {
 		return ErrDateBusy
 	}
 
 	delete(s.eventsStartsAtMap, existingEvent.StartsAt)
 
-	s.eventsByIdMap[id] = event
+	s.eventsByIDMap[id] = event
 	s.eventsStartsAtMap[event.StartsAt] = id
 
 	return nil
 }
 
-func (s *Storage) Delete(id storage.EventId) error {
+func (s *Storage) Delete(id storage.EventID) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	existingEvent, exists := s.eventsByIdMap[id]
+	existingEvent, exists := s.eventsByIDMap[id]
 	if !exists {
 		return ErrEventNotFound
 	}
 
 	delete(s.eventsStartsAtMap, existingEvent.StartsAt)
-	delete(s.eventsByIdMap, id)
+	delete(s.eventsByIDMap, id)
 
 	return nil
 }
@@ -131,7 +131,7 @@ func (s *Storage) ListEventForMonth(monthStart time.Time) []storage.Event {
 }
 
 func (s *Storage) isValidEvent(event storage.Event) bool {
-	if event.Id == "" || event.Title == "" || event.Description == "" {
+	if event.ID == "" || event.Title == "" || event.Description == "" {
 		return false
 	}
 
@@ -149,7 +149,7 @@ func (s *Storage) isValidEvent(event storage.Event) bool {
 func (s *Storage) rangeEvents(startTime time.Time, endTime time.Time) []storage.Event {
 	res := make([]storage.Event, 0)
 
-	for _, event := range s.eventsByIdMap {
+	for _, event := range s.eventsByIDMap {
 		if !event.StartsAt.Before(startTime) && event.StartsAt.Before(endTime) {
 			res = append(res, event)
 		}
