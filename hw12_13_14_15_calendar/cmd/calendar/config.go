@@ -14,6 +14,7 @@ type Config struct {
 	Logger  LoggerConf
 	Storage StorageConf
 	HTTP    HTTPConf
+	Db      DbConf
 }
 
 type LoggerConf struct {
@@ -26,6 +27,14 @@ type StorageConf struct {
 
 type HTTPConf struct {
 	Host, Port string
+}
+
+type DbConf struct {
+	Host     string
+	Port     int
+	User     string
+	Password string
+	Name     string
 }
 
 func NewConfig(path string) (config Config, err error) {

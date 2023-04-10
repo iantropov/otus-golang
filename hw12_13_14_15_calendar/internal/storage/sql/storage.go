@@ -1,20 +1,13 @@
 package sqlstorage
 
-import "context"
+import (
+	"github.com/jackc/pgx/v4/pgxpool"
+)
 
-type Storage struct { // TODO
+type Storage struct {
+	pgxPool *pgxpool.Pool
 }
 
 func New() *Storage {
 	return &Storage{}
-}
-
-func (s *Storage) Connect(ctx context.Context) error {
-	// TODO
-	return nil
-}
-
-func (s *Storage) Close(ctx context.Context) error {
-	// TODO
-	return nil
 }
