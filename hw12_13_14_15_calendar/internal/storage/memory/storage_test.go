@@ -1,6 +1,7 @@
 package memorystorage
 
 import (
+	"sync"
 	"testing"
 	"time"
 
@@ -384,6 +385,57 @@ func TestStorageListEventFoMonth(t *testing.T) {
 
 	weekEvents := memStorage.ListEventForMonth(date)
 	require.ElementsMatch(t, weekEvents, []storage.Event{events[0], events[1]})
+}
+
+func TestStorageConcurrentReadsAndWrites(t *testing.T) {
+	const ITERATIONS_COUNT = 1_000_000
+
+	date := date(2050, 1, 1)
+	memStorage := New()
+	wg := sync.WaitGroup{}
+	wg.Add(2)
+
+	eventIDs := make([]storage.EventID, ITERATIONS_COUNT)
+	for i := 0; i < ITERATIONS_COUNT; i++ {
+		eventIDs[i] = storage.EventID(gofakeit.UUID())
+	}
+
+	events := make([]storage.Event, ITERATIONS_COUNT)
+	for i := 0; i < ITERATIONS_COUNT; i++ {
+		events[i] = buildEventWith(map[string]any{
+			"ID":       eventIDs[i],
+			"StartsAt": date,
+			"EndsAt":   date.AddDate(0, 0, 1),
+		})
+	}
+
+	go func() {
+		defer wg.Done()
+		for i := 0; i < ITERATIONS_COUNT; i++ {
+			memStorage.Create(events[i])
+		}
+	}()
+
+	go func() {
+		defer wg.Done()
+		for i := 0; i < ITERATIONS_COUNT; i++ {
+			memStorage.Update(eventIDs[i], buildEventWith(map[string]any{
+				"StartsAt": events[i].StartsAt,
+				"EndsAt":   events[i].EndsAt,
+				"ID":       eventIDs[i],
+				"Title":    gofakeit.FarmAnimal(),
+			}))
+		}
+	}()
+
+	go func() {
+		defer wg.Done()
+		for i := 0; i < ITERATIONS_COUNT; i++ {
+			memStorage.Delete(eventIDs[i])
+		}
+	}()
+
+	wg.Wait()
 }
 
 func buildEvent() storage.Event {
