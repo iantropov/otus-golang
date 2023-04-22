@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"flag"
 	"log"
 	"os"
@@ -12,7 +14,9 @@ import (
 	"github.com/iantropov/otus-golang/hw12_13_14_15_calendar/internal/app"
 	"github.com/iantropov/otus-golang/hw12_13_14_15_calendar/internal/config"
 	internalhttp "github.com/iantropov/otus-golang/hw12_13_14_15_calendar/internal/server/http"
+	"github.com/iantropov/otus-golang/hw12_13_14_15_calendar/internal/storage"
 	memorystorage "github.com/iantropov/otus-golang/hw12_13_14_15_calendar/internal/storage/memory"
+	sqlstorage "github.com/iantropov/otus-golang/hw12_13_14_15_calendar/internal/storage/sql"
 	"github.com/iantropov/otus-golang/hw12_13_14_15_calendar/pkg/logger"
 )
 
@@ -30,23 +34,29 @@ func main() {
 		return
 	}
 
+	ctx, cancel := signal.NotifyContext(context.Background(),
+		syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
+	defer cancel()
+
 	config, err := config.NewConfig(configFile)
 	if err != nil {
 		log.Fatal("failed to get config", err)
 	}
+
+	storage, err := getStorage(config, ctx)
+	if err != nil {
+		log.Fatal("failed to create storage", err)
+	}
+	// TODO Close storage
+
 	logg, err := logger.New(config.Logger.Level)
 	if err != nil {
 		log.Fatal("failed to create logger", err)
 	}
 
-	storage := memorystorage.New()
 	calendar := app.New(logg, storage)
 
 	server := internalhttp.NewServer(config.HTTP.Host, config.HTTP.Port, logg, calendar)
-
-	ctx, cancel := signal.NotifyContext(context.Background(),
-		syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
-	defer cancel()
 
 	go func() {
 		<-ctx.Done()
@@ -66,4 +76,38 @@ func main() {
 		cancel()
 		os.Exit(1) //nolint:gocritic
 	}
+}
+
+func getStorage(config config.Config, ctx context.Context) (storage storage.Storage, err error) {
+	if config.Storage.Type == "memory" {
+		return memorystorage.New(), nil
+	}
+
+	if config.Storage.Type == "sql" {
+		var db *sql.DB
+		db, err = getSQLDb(config.Storage.DSN)
+		if err != nil {
+			return
+		}
+
+		sqlStorage := sqlstorage.New(db)
+		err = sqlStorage.Connect(ctx)
+		if err != nil {
+			return
+		}
+
+		storage = sqlStorage
+		return
+	}
+
+	err = errors.New("invalid storage type")
+	return
+}
+
+func getSQLDb(dsn string) (*sql.DB, error) {
+	db, err := sql.Open("postgres", dsn)
+	if err != nil {
+		return nil, err
+	}
+	return db, nil
 }

@@ -1,5 +1,5 @@
 # Собираем в гошке
-FROM golang:1.16.2 as build
+FROM golang:1.20.1 as build
 
 ENV BIN_FILE /opt/calendar/calendar-app
 ENV CODE_DIR /go/src/
@@ -30,7 +30,8 @@ LABEL MAINTAINERS="student@otus.ru"
 ENV BIN_FILE "/opt/calendar/calendar-app"
 COPY --from=build ${BIN_FILE} ${BIN_FILE}
 
-ENV CONFIG_FILE /etc/calendar/config.toml
-COPY ./configs/config.toml ${CONFIG_FILE}
+ARG CONFIG_FILE ./configs/config.toml
+ENV CONFIG_FILE_DST /etc/calendar/config.toml
+COPY ${CONFIG_FILE} ${CONFIG_FILE_DST}
 
-CMD ${BIN_FILE} -config ${CONFIG_FILE}
+CMD ${BIN_FILE} -config ${CONFIG_FILE_DST}

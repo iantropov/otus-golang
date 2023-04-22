@@ -4,6 +4,7 @@ go 1.20
 
 require (
 	github.com/brianvoe/gofakeit/v6 v6.20.2
+	github.com/lib/pq v1.10.8
 	github.com/pelletier/go-toml v1.9.5
 	github.com/stretchr/testify v1.8.2
 )

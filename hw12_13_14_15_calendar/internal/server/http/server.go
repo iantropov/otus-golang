@@ -59,6 +59,7 @@ func (s *Server) Start(startCtx context.Context) error {
 }
 
 func (s *Server) Stop(ctx context.Context) error {
+	s.logger.Infof("stopping http at %s:%s\n", s.host, s.port)
 	return s.server.Shutdown(ctx)
 }
 

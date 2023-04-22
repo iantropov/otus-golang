@@ -22,6 +22,7 @@ type LoggerConf struct {
 
 type StorageConf struct {
 	Type string
+	DSN  string
 }
 
 type HTTPConf struct {
