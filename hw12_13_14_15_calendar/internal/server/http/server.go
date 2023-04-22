@@ -59,7 +59,7 @@ func (s *Server) Start(startCtx context.Context) error {
 }
 
 func (s *Server) Stop(ctx context.Context) error {
-	return s.server.Close()
+	return s.server.Shutdown(ctx)
 }
 
 func (s *Server) getHello(w http.ResponseWriter, r *http.Request) {

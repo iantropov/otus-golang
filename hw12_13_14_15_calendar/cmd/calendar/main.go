@@ -10,9 +10,10 @@ import (
 	"time"
 
 	"github.com/iantropov/otus-golang/hw12_13_14_15_calendar/internal/app"
-	"github.com/iantropov/otus-golang/hw12_13_14_15_calendar/internal/logger"
+	"github.com/iantropov/otus-golang/hw12_13_14_15_calendar/internal/config"
 	internalhttp "github.com/iantropov/otus-golang/hw12_13_14_15_calendar/internal/server/http"
 	memorystorage "github.com/iantropov/otus-golang/hw12_13_14_15_calendar/internal/storage/memory"
+	"github.com/iantropov/otus-golang/hw12_13_14_15_calendar/pkg/logger"
 )
 
 var configFile string
@@ -29,7 +30,7 @@ func main() {
 		return
 	}
 
-	config, err := NewConfig(configFile)
+	config, err := config.NewConfig(configFile)
 	if err != nil {
 		log.Fatal("failed to get config", err)
 	}

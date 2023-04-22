@@ -10,7 +10,7 @@ import (
 
 type Storage struct {
 	mu                sync.RWMutex
-	eventsByIDMap     map[storage.EventID]storage.Event
+	eventsByIDMap     map[storage.EventID]*storage.Event
 	eventsStartsAtMap map[time.Time]storage.EventID
 }
 
@@ -25,7 +25,7 @@ var (
 )
 
 func New() *Storage {
-	eventsByIDMap := make(map[storage.EventID]storage.Event)
+	eventsByIDMap := make(map[storage.EventID]*storage.Event)
 	eventsStartsAtMap := make(map[time.Time]storage.EventID)
 	return &Storage{
 		eventsByIDMap:     eventsByIDMap,
@@ -49,7 +49,7 @@ func (s *Storage) Create(event storage.Event) error {
 		return ErrDateBusy
 	}
 
-	s.eventsByIDMap[event.ID] = event
+	s.eventsByIDMap[event.ID] = &event
 	s.eventsStartsAtMap[event.StartsAt] = event.ID
 
 	return nil
@@ -64,7 +64,7 @@ func (s *Storage) Get(id storage.EventID) (storage.Event, error) {
 		return storage.Event{}, ErrEventNotFound
 	}
 
-	return event, nil
+	return *event, nil
 }
 
 func (s *Storage) Update(id storage.EventID, event storage.Event) error {
@@ -91,7 +91,7 @@ func (s *Storage) Update(id storage.EventID, event storage.Event) error {
 
 	delete(s.eventsStartsAtMap, existingEvent.StartsAt)
 
-	s.eventsByIDMap[id] = event
+	s.eventsByIDMap[id] = &event
 	s.eventsStartsAtMap[event.StartsAt] = id
 
 	return nil
@@ -113,20 +113,14 @@ func (s *Storage) Delete(id storage.EventID) error {
 }
 
 func (s *Storage) ListEventForDay(day time.Time) []storage.Event {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
 	return s.rangeEvents(day, day.AddDate(0, 0, 1))
 }
 
 func (s *Storage) ListEventForWeek(weekStart time.Time) []storage.Event {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
 	return s.rangeEvents(weekStart, weekStart.AddDate(0, 0, 7))
 }
 
 func (s *Storage) ListEventForMonth(monthStart time.Time) []storage.Event {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
 	return s.rangeEvents(monthStart, monthStart.AddDate(0, 1, 0))
 }
 
@@ -147,11 +141,14 @@ func (s *Storage) isValidEvent(event storage.Event) bool {
 }
 
 func (s *Storage) rangeEvents(startTime time.Time, endTime time.Time) []storage.Event {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
 	res := make([]storage.Event, 0)
 
 	for _, event := range s.eventsByIDMap {
 		if !event.StartsAt.Before(startTime) && event.StartsAt.Before(endTime) {
-			res = append(res, event)
+			res = append(res, *event)
 		}
 	}
 
