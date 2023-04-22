@@ -31,7 +31,7 @@ func New(db *sql.DB) *Storage {
 }
 
 func (s *Storage) Connect(ctx context.Context) error {
-	return s.db.Ping()
+	return s.db.PingContext(ctx)
 }
 
 func (s *Storage) Close(ctx context.Context) error {
@@ -40,7 +40,7 @@ func (s *Storage) Close(ctx context.Context) error {
 }
 
 func (s *Storage) Create(event storage.Event) error {
-	_, err := s.db.Exec(InsertEvent, event.ID, event.Title, event.StartsAt, event.EndsAt, event.Description, event.UserID, event.NotifyBefore)
+	_, err := s.db.Exec(InsertEvent, event.ID, event.Title, event.StartsAt, event.EndsAt, event.Description, event.UserID, event.NotifyBefore.Abs())
 	return err
 }
 

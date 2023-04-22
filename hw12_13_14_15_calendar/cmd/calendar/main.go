@@ -42,9 +42,9 @@ func main() {
 		log.Fatal("failed to get config", err)
 	}
 
-	var storage storage.Storage
+	var appStorage storage.Storage
 	if config.Storage.Type == "memory" {
-		storage = memorystorage.New()
+		appStorage = memorystorage.New()
 	}
 
 	if config.Storage.Type == "sql" {
@@ -61,7 +61,7 @@ func main() {
 		}
 		defer sqlStorage.Close(ctx)
 
-		storage = sqlStorage
+		appStorage = sqlStorage
 	}
 
 	logg, err := logger.New(config.Logger.Level)
@@ -69,7 +69,7 @@ func main() {
 		log.Fatal("failed to create logger", err)
 	}
 
-	calendar := app.New(logg, storage)
+	calendar := app.New(logg, appStorage)
 
 	server := internalhttp.NewServer(config.HTTP.Host, config.HTTP.Port, logg, calendar)
 
