@@ -13,7 +13,7 @@ type Logger interface { // TODO
 type Storage interface { // TODO
 }
 
-func New(logger Logger, storage Storage) *App {
+func New(_ Logger, _ Storage) *App {
 	return &App{}
 }
 

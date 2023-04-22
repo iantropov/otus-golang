@@ -387,7 +387,7 @@ func TestStorageListEventFoMonth(t *testing.T) {
 	require.ElementsMatch(t, weekEvents, []storage.Event{events[0], events[1]})
 }
 
-func TestStorageConcurrentReadsAndWrites(t *testing.T) {
+func TestStorageConcurrentReadsAndWrites(_ *testing.T) {
 	const iterationsCount = 1_000_000
 
 	date := date(2050, 1, 1)

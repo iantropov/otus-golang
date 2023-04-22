@@ -29,7 +29,7 @@ type serverContext string
 
 const statusCodeKey = serverContext("statusCode")
 
-func NewServer(host, port string, logger Logger, app Application) *Server {
+func NewServer(host, port string, logger Logger, _ Application) *Server {
 	return &Server{
 		host:   host,
 		port:   port,

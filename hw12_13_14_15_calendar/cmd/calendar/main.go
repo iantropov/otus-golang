@@ -33,13 +33,14 @@ func main() {
 		return
 	}
 
-	ctx, cancel := signal.NotifyContext(context.Background(),
-		syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
-	defer cancel()
-
 	config, err := config.NewConfig(configFile)
 	if err != nil {
 		log.Fatal("failed to get config", err)
+	}
+
+	logg, err := logger.New(config.Logger.Level)
+	if err != nil {
+		log.Fatal("failed to create logger", err)
 	}
 
 	var appStorage storage.Storage
@@ -47,26 +48,29 @@ func main() {
 		appStorage = memorystorage.New()
 	}
 
+	ctx, cancel := signal.NotifyContext(context.Background(),
+		syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
+	defer cancel()
+
 	if config.Storage.Type == "sql" {
 		var db *sql.DB
 		db, err = getSQLDb(config.Storage.DSN)
 		if err != nil {
-			log.Fatal("failed to get DB", err)
+			logg.Error("failed to get DB: " + err.Error())
+			cancel()
+			os.Exit(1) //nolint:gocritic
 		}
 
-		sqlStorage := sqlstorage.New(db)
+		sqlStorage := sqlstorage.New(logg, db)
 		err = sqlStorage.Connect(ctx)
 		if err != nil {
-			log.Fatal("failed to get sqlstorage", err)
+			logg.Error("failed to get sqlstorage: " + err.Error())
+			cancel()
+			os.Exit(1) //nolint:gocritic
 		}
 		defer sqlStorage.Close(ctx)
 
 		appStorage = sqlStorage
-	}
-
-	logg, err := logger.New(config.Logger.Level)
-	if err != nil {
-		log.Fatal("failed to create logger", err)
 	}
 
 	calendar := app.New(logg, appStorage)
