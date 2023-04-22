@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"flag"
 	"log"
 	"os"
@@ -43,11 +42,27 @@ func main() {
 		log.Fatal("failed to get config", err)
 	}
 
-	storage, err := getStorage(config, ctx)
-	if err != nil {
-		log.Fatal("failed to create storage", err)
+	var storage storage.Storage
+	if config.Storage.Type == "memory" {
+		storage = memorystorage.New()
 	}
-	// TODO Close storage
+
+	if config.Storage.Type == "sql" {
+		var db *sql.DB
+		db, err = getSQLDb(config.Storage.DSN)
+		if err != nil {
+			log.Fatal("failed to get DB", err)
+		}
+
+		sqlStorage := sqlstorage.New(db)
+		err = sqlStorage.Connect(ctx)
+		if err != nil {
+			log.Fatal("failed to get sqlstorage", err)
+		}
+		defer sqlStorage.Close(ctx)
+
+		storage = sqlStorage
+	}
 
 	logg, err := logger.New(config.Logger.Level)
 	if err != nil {
@@ -76,32 +91,6 @@ func main() {
 		cancel()
 		os.Exit(1) //nolint:gocritic
 	}
-}
-
-func getStorage(config config.Config, ctx context.Context) (storage storage.Storage, err error) {
-	if config.Storage.Type == "memory" {
-		return memorystorage.New(), nil
-	}
-
-	if config.Storage.Type == "sql" {
-		var db *sql.DB
-		db, err = getSQLDb(config.Storage.DSN)
-		if err != nil {
-			return
-		}
-
-		sqlStorage := sqlstorage.New(db)
-		err = sqlStorage.Connect(ctx)
-		if err != nil {
-			return
-		}
-
-		storage = sqlStorage
-		return
-	}
-
-	err = errors.New("invalid storage type")
-	return
 }
 
 func getSQLDb(dsn string) (*sql.DB, error) {

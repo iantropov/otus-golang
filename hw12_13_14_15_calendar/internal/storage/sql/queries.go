@@ -1,29 +1,13 @@
 package sqlstorage
 
-const InsertEvent = `INSERT INTO events ()`
+import "fmt"
 
-// TODO
-
-// Событие - основная сущность, содержит в себе поля:
-// * ID - уникальный идентификатор события (можно воспользоваться UUID);
-// * Заголовок - короткий текст;
-// * Дата и время события;
-// * Длительность события (или дата и время окончания);
-// * Описание события - длинный текст, опционально;
-// * ID пользователя, владельца события;
-// * За сколько времени высылать уведомление, опционально.
-
-// #### Уведомление
-// Уведомление - временная сущность, в БД не хранится, складывается в очередь для рассыльщика, содержит поля:
-// * ID события;
-// * Заголовок события;
-// * Дата события;
-// * Пользователь, которому отправлять.
-
-// ### Описание методов
-// * Создать (событие);
-// * Обновить (ID события, событие);
-// * Удалить (ID события);
-// * СписокСобытийНаДень (дата);
-// * СписокСобытийНаНеделю (дата начала недели);
-// * СписокСобытийНaМесяц (дата начала месяца).
+var (
+	eventAttributes       = `title, starts_at, ends_at, description, user_id, notify_before`
+	eventAttributesWithID = `id,` + eventAttributes
+	SelectEventByID       = fmt.Sprintf(`SELECT %s FROM events WHERE id=?`, eventAttributesWithID)
+	InsertEvent           = fmt.Sprintf(`INSERT INTO events(%s) VALUES(?,?,?,?,?,?)`, eventAttributes)
+	UpdateEvent           = `UPDATE events SET title=? starts_at=? ends_at=? description=? user_id=? notify_before=? WHERE id=?`
+	DeleteEvent           = `DELETE FROM events WHERE id=?`
+	SelectEventsForPeriod = fmt.Sprintf(`SELECT %s FROM events WHERE start_date >= ? AND start_date < ?`, eventAttributesWithID)
+)
