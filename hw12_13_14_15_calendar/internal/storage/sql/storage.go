@@ -47,8 +47,9 @@ func (s *Storage) Close(_ context.Context) error {
 	return nil
 }
 
-func (s *Storage) Create(event storage.Event) error {
-	_, err := s.db.Exec(
+func (s *Storage) Create(ctx context.Context, event storage.Event) error {
+	_, err := s.db.ExecContext(
+		ctx,
 		InsertEvent,
 		event.ID,
 		event.Title,
@@ -61,8 +62,8 @@ func (s *Storage) Create(event storage.Event) error {
 	return err
 }
 
-func (s *Storage) Get(id storage.EventID) (event storage.Event, err error) {
-	err = s.db.QueryRow(SelectEventByID, id).Scan(
+func (s *Storage) Get(ctx context.Context, id storage.EventID) (event storage.Event, err error) {
+	err = s.db.QueryRowContext(ctx, SelectEventByID, id).Scan(
 		&event.ID,
 		&event.Title,
 		&event.StartsAt,
@@ -74,8 +75,9 @@ func (s *Storage) Get(id storage.EventID) (event storage.Event, err error) {
 	return
 }
 
-func (s *Storage) Update(id storage.EventID, event storage.Event) error {
-	_, err := s.db.Exec(
+func (s *Storage) Update(ctx context.Context, id storage.EventID, event storage.Event) error {
+	_, err := s.db.ExecContext(
+		ctx,
 		UpdateEvent,
 		event.Title,
 		event.StartsAt,
@@ -88,27 +90,27 @@ func (s *Storage) Update(id storage.EventID, event storage.Event) error {
 	return err
 }
 
-func (s *Storage) Delete(id storage.EventID) error {
-	_, err := s.db.Exec(DeleteEvent, id)
+func (s *Storage) Delete(ctx context.Context, id storage.EventID) error {
+	_, err := s.db.ExecContext(ctx, DeleteEvent, id)
 	return err
 }
 
-func (s *Storage) ListEventForDay(day time.Time) []storage.Event {
-	return s.rangeEvents(day, day.AddDate(0, 0, 1))
+func (s *Storage) ListEventForDay(ctx context.Context, day time.Time) []storage.Event {
+	return s.rangeEvents(ctx, day, day.AddDate(0, 0, 1))
 }
 
-func (s *Storage) ListEventForWeek(weekStart time.Time) []storage.Event {
-	return s.rangeEvents(weekStart, weekStart.AddDate(0, 0, 7))
+func (s *Storage) ListEventForWeek(ctx context.Context, weekStart time.Time) []storage.Event {
+	return s.rangeEvents(ctx, weekStart, weekStart.AddDate(0, 0, 7))
 }
 
-func (s *Storage) ListEventForMonth(monthStart time.Time) []storage.Event {
-	return s.rangeEvents(monthStart, monthStart.AddDate(0, 1, 0))
+func (s *Storage) ListEventForMonth(ctx context.Context, monthStart time.Time) []storage.Event {
+	return s.rangeEvents(ctx, monthStart, monthStart.AddDate(0, 1, 0))
 }
 
-func (s *Storage) rangeEvents(startTime time.Time, endTime time.Time) []storage.Event {
+func (s *Storage) rangeEvents(ctx context.Context, startTime time.Time, endTime time.Time) []storage.Event {
 	res := make([]storage.Event, 0)
 
-	rows, err := s.db.Query(SelectEventsForPeriod, startTime, endTime)
+	rows, err := s.db.QueryContext(ctx, SelectEventsForPeriod, startTime, endTime)
 	if err != nil {
 		s.logger.Error("failed to query: " + err.Error())
 		return nil

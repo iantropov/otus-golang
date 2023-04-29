@@ -1,6 +1,7 @@
 package memorystorage
 
 import (
+	"context"
 	"errors"
 	"sync"
 	"time"
@@ -33,7 +34,7 @@ func New() *Storage {
 	}
 }
 
-func (s *Storage) Create(event storage.Event) error {
+func (s *Storage) Create(_ context.Context, event storage.Event) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -55,7 +56,7 @@ func (s *Storage) Create(event storage.Event) error {
 	return nil
 }
 
-func (s *Storage) Get(id storage.EventID) (storage.Event, error) {
+func (s *Storage) Get(_ context.Context, id storage.EventID) (storage.Event, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -67,7 +68,7 @@ func (s *Storage) Get(id storage.EventID) (storage.Event, error) {
 	return *event, nil
 }
 
-func (s *Storage) Update(id storage.EventID, event storage.Event) error {
+func (s *Storage) Update(_ context.Context, id storage.EventID, event storage.Event) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -97,7 +98,7 @@ func (s *Storage) Update(id storage.EventID, event storage.Event) error {
 	return nil
 }
 
-func (s *Storage) Delete(id storage.EventID) error {
+func (s *Storage) Delete(_ context.Context, id storage.EventID) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -112,15 +113,15 @@ func (s *Storage) Delete(id storage.EventID) error {
 	return nil
 }
 
-func (s *Storage) ListEventForDay(day time.Time) []storage.Event {
+func (s *Storage) ListEventForDay(_ context.Context, day time.Time) []storage.Event {
 	return s.rangeEvents(day, day.AddDate(0, 0, 1))
 }
 
-func (s *Storage) ListEventForWeek(weekStart time.Time) []storage.Event {
+func (s *Storage) ListEventForWeek(_ context.Context, weekStart time.Time) []storage.Event {
 	return s.rangeEvents(weekStart, weekStart.AddDate(0, 0, 7))
 }
 
-func (s *Storage) ListEventForMonth(monthStart time.Time) []storage.Event {
+func (s *Storage) ListEventForMonth(_ context.Context, monthStart time.Time) []storage.Event {
 	return s.rangeEvents(monthStart, monthStart.AddDate(0, 1, 0))
 }
 

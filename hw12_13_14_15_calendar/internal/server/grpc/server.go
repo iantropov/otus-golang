@@ -3,7 +3,9 @@ package grpc
 import (
 	"context"
 	"net"
+	"time"
 
+	"github.com/iantropov/otus-golang/hw12_13_14_15_calendar/internal/storage"
 	"github.com/iantropov/otus-golang/hw12_13_14_15_calendar/pkg/event_service_v1"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -19,7 +21,14 @@ type Logger interface {
 	Errorf(string, ...any)
 }
 
-type Application interface { // TODO
+type Application interface {
+	Create(ctx context.Context, event storage.Event) error
+	Update(ctx context.Context, id storage.EventID, event storage.Event) error
+	Delete(ctx context.Context, id storage.EventID) error
+	Get(ctx context.Context, id storage.EventID) (storage.Event, error)
+	ListEventForDay(ctx context.Context, day time.Time) []storage.Event
+	ListEventForMonth(ctx context.Context, monthStart time.Time) []storage.Event
+	ListEventForWeek(ctx context.Context, weekStart time.Time) []storage.Event
 }
 
 type Server struct {
