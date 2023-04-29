@@ -37,25 +37,20 @@ func NewServer(host, port string, logger Logger, _ Application) *Server {
 	}
 }
 
-func (s *Server) Start(startCtx context.Context) error {
-	go func() {
-		mux := http.NewServeMux()
+func (s *Server) Start() error {
+	mux := http.NewServeMux()
 
-		mux.HandleFunc("/hello", s.getHello)
+	mux.HandleFunc("/hello", s.getHello)
 
-		s.server = http.Server{
-			Addr:              net.JoinHostPort(s.host, s.port),
-			Handler:           loggingMiddleware(s.logger, mux),
-			ReadHeaderTimeout: time.Minute,
-		}
+	s.server = http.Server{
+		Addr:              net.JoinHostPort(s.host, s.port),
+		Handler:           loggingMiddleware(s.logger, mux),
+		ReadHeaderTimeout: time.Minute,
+	}
 
-		s.logger.Infof("listening http at %s:%s\n", s.host, s.port)
-		s.server.ListenAndServe()
-	}()
+	s.logger.Infof("listening http at %s:%s\n", s.host, s.port)
 
-	<-startCtx.Done()
-
-	return nil
+	return s.server.ListenAndServe()
 }
 
 func (s *Server) Stop(ctx context.Context) error {
