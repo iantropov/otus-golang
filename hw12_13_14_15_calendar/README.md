@@ -11,3 +11,30 @@
 - `hw15_calendar` (от `hw14_calendar`) -> Merge Request в `hw14_calendar` (если уже вмержена, то в `master`)
 
 **Домашнее задание не принимается, если не принято ДЗ, предшедствующее ему.**
+
+
+## Roadmap
+
++ config
+  + read file
+  + parse
+  + populate config
+- logs
+  - use config
+  - impl
+- http
+  - use config
+  - startup
+  - hello endpoint
+  - middleware
+- storage
+  - use config
+  - startup
+  - in-memory
+  - postgres
+    - init
+    - create docker compose
+    - logic
+- tests
+  - unit
+    - in-memory storage
