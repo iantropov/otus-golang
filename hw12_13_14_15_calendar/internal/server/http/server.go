@@ -1,8 +1,9 @@
 package internalhttp
 
 import (
+	"bytes"
 	"context"
-	"fmt"
+	"encoding/json"
 	"io"
 	"net"
 	"net/http"
@@ -49,7 +50,7 @@ func NewServer(host, port string, logger Logger, app Application) *Server {
 func (s *Server) Start() error {
 	mux := http.NewServeMux()
 
-	mux.HandleFunc("/hello", s.getHello)
+	mux.HandleFunc("/hello", wrapHandler(s.getHello))
 
 	s.server = http.Server{
 		Addr:              net.JoinHostPort(s.host, s.port),
@@ -67,14 +68,66 @@ func (s *Server) Stop(ctx context.Context) error {
 	return s.server.Shutdown(ctx)
 }
 
-func (s *Server) getHello(w http.ResponseWriter, r *http.Request) {
-	fmt.Printf("got /hello request\n")
+func wrapHandler[Req any, Res any](handler func(ctx context.Context, req Req) (res Res, err error)) func(w http.ResponseWriter, r *http.Request) {
+	return func(resWriter http.ResponseWriter, httpReq *http.Request) {
+		ctx := httpReq.Context()
 
-	s.setResponseCode(w, r, 200)
-	io.WriteString(w, "Hello, HTTP!\n")
+		limitedReader := io.LimitReader(httpReq.Body, 1_000_000)
+
+		body, err := io.ReadAll(limitedReader)
+		if err != nil {
+			respondWithError(resWriter, httpReq, http.StatusBadRequest, "reading body", err)
+			return
+		}
+
+		var request Req
+		err = json.Unmarshal(body, &request)
+		if err != nil {
+			respondWithError(resWriter, httpReq, http.StatusBadRequest, "decoding JSON", err)
+			return
+		}
+
+		response, err := handler(ctx, request)
+		if err != nil {
+			respondWithError(resWriter, httpReq, http.StatusInternalServerError, "running handler", err)
+			return
+		}
+
+		rawJSON, err := json.Marshal(response)
+		if err != nil {
+			respondWithError(resWriter, httpReq, http.StatusInternalServerError, "encoding JSON", err)
+			return
+		}
+
+		respondWithSuccess(resWriter, httpReq, rawJSON)
+	}
 }
 
-func (s *Server) setResponseCode(w http.ResponseWriter, r *http.Request, statusCode int) {
+func respondWithError(resWriter http.ResponseWriter, r *http.Request, status int, text string, err error) {
+	writeErrorJSON(resWriter, text, err)
+	resWriter.Header().Add("Content-Type", "application/json")
+	setResponseCode(resWriter, r, 400)
+
+	resWriter.WriteHeader(status)
+}
+
+func respondWithSuccess(resWriter http.ResponseWriter, r *http.Request, rawJSON []byte) {
+	resWriter.Header().Add("Content-Type", "application/json")
+	setResponseCode(resWriter, r, 200)
+	_, _ = resWriter.Write(rawJSON)
+}
+
+func writeErrorJSON(w http.ResponseWriter, text string, err error) {
+	buf := bytes.NewBufferString("{\"message\":\"")
+	buf.WriteString(text)
+	buf.WriteString("\",\"error\":\"")
+	buf.WriteString(err.Error())
+	buf.WriteString("\"}\n")
+
+	w.Write(buf.Bytes())
+}
+
+func setResponseCode(w http.ResponseWriter, r *http.Request, statusCode int) {
 	ctx := context.WithValue(r.Context(), statusCodeKey, statusCode)
 	*r = *(r.WithContext(ctx))
 
