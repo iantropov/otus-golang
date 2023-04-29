@@ -16,6 +16,7 @@ type Server struct {
 	host, port string
 	logger     Logger
 	server     http.Server
+	app        Application
 }
 
 type Logger interface {
@@ -44,6 +45,7 @@ func NewServer(host, port string, logger Logger, app Application) *Server {
 		host:   host,
 		port:   port,
 		logger: logger,
+		app:    app,
 	}
 }
 
@@ -51,6 +53,13 @@ func (s *Server) Start() error {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/hello", wrapHandler(s.getHello))
+	mux.HandleFunc("/events/create", wrapHandler(s.createEvent))
+	mux.HandleFunc("/events/update", wrapHandler(s.updateEvent))
+	mux.HandleFunc("/events/delete", wrapHandler(s.deleteEvent))
+	mux.HandleFunc("/events/get", wrapHandler(s.getEvent))
+	mux.HandleFunc("/events/listForDay", wrapHandler(s.listEventForDay))
+	mux.HandleFunc("/events/listForWeek", wrapHandler(s.listEventForWeek))
+	mux.HandleFunc("/events/listForMonth", wrapHandler(s.listEventForMonth))
 
 	s.server = http.Server{
 		Addr:              net.JoinHostPort(s.host, s.port),
