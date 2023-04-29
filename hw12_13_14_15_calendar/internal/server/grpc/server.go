@@ -5,6 +5,7 @@ import (
 	"net"
 	"time"
 
+	"github.com/grpc-ecosystem/go-grpc-middleware"
 	"github.com/iantropov/otus-golang/hw12_13_14_15_calendar/internal/storage"
 	"github.com/iantropov/otus-golang/hw12_13_14_15_calendar/pkg/event_service_v1"
 	"google.golang.org/grpc"
@@ -22,10 +23,10 @@ type Logger interface {
 }
 
 type Application interface {
-	Create(ctx context.Context, event storage.Event) error
-	Update(ctx context.Context, id storage.EventID, event storage.Event) error
-	Delete(ctx context.Context, id storage.EventID) error
-	Get(ctx context.Context, id storage.EventID) (storage.Event, error)
+	CreateEvent(ctx context.Context, event storage.Event) error
+	UpdateEvent(ctx context.Context, id storage.EventID, event storage.Event) error
+	DeleteEvent(ctx context.Context, id storage.EventID) error
+	GetEvent(ctx context.Context, id storage.EventID) (storage.Event, error)
 	ListEventForDay(ctx context.Context, day time.Time) []storage.Event
 	ListEventForMonth(ctx context.Context, monthStart time.Time) []storage.Event
 	ListEventForWeek(ctx context.Context, weekStart time.Time) []storage.Event
@@ -56,11 +57,11 @@ func (s *Server) Start() error {
 	}
 
 	s.server = grpc.NewServer(
-	// grpc.UnaryInterceptor(
-	// grpcMiddleware.ChainUnaryServer(
-	// 	interceptors.LoggingInterceptor,
-	// ),
-	// ),
+		grpc.UnaryInterceptor(
+			grpc_middleware.ChainUnaryServer(
+				LoggingInterceptor(s.logger),
+			),
+		),
 	)
 	reflection.Register(s.server)
 	event_service_v1.RegisterEventServiceV1Server(s.server, s)
