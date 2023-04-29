@@ -8,7 +8,7 @@ build:
 	go build -v -o $(BIN) -ldflags "$(LDFLAGS)" ./cmd/calendar
 
 run: build
-	$(BIN) -config ./configs/config.sql.toml
+	$(BIN) -config ./configs/config.memory.toml
 
 build-img:
 	docker build \
@@ -31,4 +31,14 @@ install-lint-deps:
 lint: install-lint-deps
 	golangci-lint run ./...
 
-.PHONY: build run build-img run-img version test lint
+install-grpc-deps:
+	go get -u google.golang.org/protobuf/cmd/protoc-gen-go
+	go get -u google.golang.org/grpc/cmd/protoc-gen-go-grpc
+
+generate: install-grpc-deps
+	mkdir -p pkg/event_service_v1
+	protoc 	--proto_path=api --go_out=pkg/event_service_v1 --go_opt=paths=source_relative \
+			--go-grpc_out=pkg/event_service_v1  --go-grpc_opt=paths=source_relative \
+			EventService.proto
+
+.PHONY: build run build-img run-img version test lint generate
