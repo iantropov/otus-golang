@@ -39,7 +39,10 @@ func (s *Server) Get(ctx context.Context, req *event_service_v1.IDRequest) (*eve
 	}, nil
 }
 
-func (s *Server) ListEventForDay(ctx context.Context, req *event_service_v1.TimeRequest) (*event_service_v1.ListEventResponse, error) {
+func (s *Server) ListEventForDay(
+	ctx context.Context,
+	req *event_service_v1.TimeRequest,
+) (*event_service_v1.ListEventResponse, error) {
 	at := inTime(req.GetAt())
 	events := s.app.ListEventForDay(ctx, at)
 	return &event_service_v1.ListEventResponse{
@@ -47,7 +50,10 @@ func (s *Server) ListEventForDay(ctx context.Context, req *event_service_v1.Time
 	}, nil
 }
 
-func (s *Server) ListEventForWeek(ctx context.Context, req *event_service_v1.TimeRequest) (*event_service_v1.ListEventResponse, error) {
+func (s *Server) ListEventForWeek(
+	ctx context.Context,
+	req *event_service_v1.TimeRequest,
+) (*event_service_v1.ListEventResponse, error) {
 	at := inTime(req.GetAt())
 	events := s.app.ListEventForWeek(ctx, at)
 	return &event_service_v1.ListEventResponse{
@@ -55,7 +61,10 @@ func (s *Server) ListEventForWeek(ctx context.Context, req *event_service_v1.Tim
 	}, nil
 }
 
-func (s *Server) ListEventForMonth(ctx context.Context, req *event_service_v1.TimeRequest) (*event_service_v1.ListEventResponse, error) {
+func (s *Server) ListEventForMonth(
+	ctx context.Context,
+	req *event_service_v1.TimeRequest,
+) (*event_service_v1.ListEventResponse, error) {
 	at := inTime(req.GetAt())
 	events := s.app.ListEventForMonth(ctx, at)
 	return &event_service_v1.ListEventResponse{

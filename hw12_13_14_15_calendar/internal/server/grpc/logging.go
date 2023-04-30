@@ -12,7 +12,12 @@ import (
 )
 
 func LoggingInterceptor(logger server.Logger) grpc.UnaryServerInterceptor {
-	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
+	return func(
+		ctx context.Context,
+		req interface{},
+		info *grpc.UnaryServerInfo,
+		handler grpc.UnaryHandler,
+	) (interface{}, error) {
 		timeStart := time.Now()
 		res, err := handler(ctx, req)
 		elapsed := time.Since(timeStart)

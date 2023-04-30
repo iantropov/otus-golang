@@ -98,7 +98,14 @@ func getSQLDb(dsn string) (*sql.DB, error) {
 	return db, nil
 }
 
-func startServer(ctx context.Context, cancel func(), server server.Server, serverName string, logg *logger.Logger, wg *sync.WaitGroup) {
+func startServer(
+	ctx context.Context,
+	cancel func(),
+	server server.Server,
+	serverName string,
+	logg *logger.Logger,
+	wg *sync.WaitGroup,
+) {
 	go func() {
 		defer wg.Done()
 

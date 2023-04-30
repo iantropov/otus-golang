@@ -18,11 +18,11 @@ type helloResponse struct {
 type event struct {
 	ID                  string    `json:"id"`
 	Title               string    `json:"title"`
-	StartsAt            time.Time `json:"starts_at"`
-	EndsAt              time.Time `json:"ends_at"`
+	StartsAt            time.Time `json:"startsAt"`
+	EndsAt              time.Time `json:"endsAt"`
 	Description         string    `json:"description"`
-	UserID              string    `json:"user_id"`
-	NotifyBeforeSeconds int       `json:"notify_before_seconds"`
+	UserID              string    `json:"userId"`
+	NotifyBeforeSeconds int       `json:"notifyBeforeSeconds"`
 }
 
 type createEventRequest struct {
@@ -42,8 +42,7 @@ type listEventsRequest struct {
 	At time.Time `json:"at"`
 }
 
-type emptyResponse struct {
-}
+type emptyResponse struct{}
 
 type getEventResponse struct {
 	Event event `json:"event"`
@@ -53,7 +52,7 @@ type listEventResponse struct {
 	Events []event `json:"events"`
 }
 
-func (s *Server) getHello(ctx context.Context, req helloRequest) (helloResponse, error) {
+func (s *Server) getHello(_ context.Context, req helloRequest) (helloResponse, error) {
 	s.logger.Info("got /hello request: " + req.ID)
 
 	return helloResponse{

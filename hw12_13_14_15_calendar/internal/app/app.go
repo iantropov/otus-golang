@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/iantropov/otus-golang/hw12_13_14_15_calendar/internal/storage"
@@ -56,7 +57,8 @@ func (a *App) ListEventForMonth(ctx context.Context, at time.Time) []storage.Eve
 }
 
 func wrapError(err error) error {
-	if internalStorageErr, ok := err.(storage.InternalError); ok {
+	var internalStorageErr storage.InternalError
+	if errors.As(err, &internalStorageErr) {
 		return InternalError{Err: internalStorageErr}
 	}
 	return err

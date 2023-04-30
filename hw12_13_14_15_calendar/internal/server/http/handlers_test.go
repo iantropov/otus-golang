@@ -26,6 +26,8 @@ func TestGetEvent(t *testing.T) {
 			title: "positive case",
 			event: existingEvent,
 			GetAppMock: func(t *testing.T) *mocks.Application {
+				t.Helper()
+
 				appMock := mocks.NewApplication(t)
 				appMock.On("GetEvent", ctx, eventID).Return(existingEvent, nil)
 				return appMock
@@ -35,6 +37,8 @@ func TestGetEvent(t *testing.T) {
 			title: "event not found",
 			err:   errEventNotFound,
 			GetAppMock: func(t *testing.T) *mocks.Application {
+				t.Helper()
+
 				appMock := mocks.NewApplication(t)
 				appMock.On("GetEvent", ctx, eventID).Return(storage.Event{}, errEventNotFound)
 				return appMock

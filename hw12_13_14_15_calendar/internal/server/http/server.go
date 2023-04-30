@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net"
 	"net/http"
@@ -61,7 +62,11 @@ func (s *Server) Stop(ctx context.Context) error {
 	return s.server.Shutdown(ctx)
 }
 
-func wrapHandler[Req any, Res any](handler func(ctx context.Context, req Req) (res Res, err error)) func(w http.ResponseWriter, r *http.Request) {
+func wrapHandler[Req any, Res any](handler func(
+	ctx context.Context,
+	req Req,
+) (res Res, err error),
+) func(w http.ResponseWriter, r *http.Request) {
 	return func(resWriter http.ResponseWriter, httpReq *http.Request) {
 		ctx := httpReq.Context()
 
@@ -83,7 +88,9 @@ func wrapHandler[Req any, Res any](handler func(ctx context.Context, req Req) (r
 		response, err := handler(ctx, request)
 		if err != nil {
 			errStatus := http.StatusUnprocessableEntity
-			if _, ok := err.(app.InternalError); ok {
+
+			var _appInternalErr app.InternalError
+			if errors.As(err, &_appInternalErr) {
 				errStatus = http.StatusInternalServerError
 			}
 
