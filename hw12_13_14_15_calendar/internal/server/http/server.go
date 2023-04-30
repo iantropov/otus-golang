@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/iantropov/otus-golang/hw12_13_14_15_calendar/internal/app"
 	"github.com/iantropov/otus-golang/hw12_13_14_15_calendar/internal/storage"
 )
 
@@ -98,7 +99,12 @@ func wrapHandler[Req any, Res any](handler func(ctx context.Context, req Req) (r
 
 		response, err := handler(ctx, request)
 		if err != nil {
-			respondWithError(resWriter, httpReq, http.StatusInternalServerError, "running handler", err)
+			errStatus := http.StatusUnprocessableEntity
+			if _, ok := err.(app.InternalError); ok {
+				errStatus = http.StatusInternalServerError
+			}
+
+			respondWithError(resWriter, httpReq, errStatus, "running handler", err)
 			return
 		}
 

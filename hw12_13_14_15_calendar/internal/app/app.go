@@ -27,19 +27,20 @@ func New(logger Logger, storage storage.Storage) *App {
 }
 
 func (a *App) CreateEvent(ctx context.Context, event storage.Event) error {
-	return a.storage.Create(ctx, event)
+	return wrapError(a.storage.Create(ctx, event))
 }
 
 func (a *App) UpdateEvent(ctx context.Context, id storage.EventID, event storage.Event) error {
-	return a.storage.Update(ctx, id, event)
+	return wrapError(a.storage.Update(ctx, id, event))
 }
 
 func (a *App) GetEvent(ctx context.Context, id storage.EventID) (storage.Event, error) {
-	return a.storage.Get(ctx, id)
+	event, err := a.storage.Get(ctx, id)
+	return event, wrapError(err)
 }
 
 func (a *App) DeleteEvent(ctx context.Context, id storage.EventID) error {
-	return a.storage.Delete(ctx, id)
+	return wrapError(a.storage.Delete(ctx, id))
 }
 
 func (a *App) ListEventForDay(ctx context.Context, at time.Time) []storage.Event {
@@ -52,4 +53,11 @@ func (a *App) ListEventForWeek(ctx context.Context, at time.Time) []storage.Even
 
 func (a *App) ListEventForMonth(ctx context.Context, at time.Time) []storage.Event {
 	return a.storage.ListEventForMonth(ctx, at)
+}
+
+func wrapError(err error) error {
+	if internalStorageErr, ok := err.(storage.InternalError); ok {
+		return InternalError{Err: internalStorageErr}
+	}
+	return err
 }

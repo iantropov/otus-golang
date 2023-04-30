@@ -2,8 +2,17 @@ package storage
 
 import (
 	"context"
+	"fmt"
 	"time"
 )
+
+type InternalError struct {
+	err error
+}
+
+func (e InternalError) Error() string {
+	return fmt.Sprintf("internal storage error: %v", e.err)
+}
 
 type Storage interface {
 	Create(ctx context.Context, event Event) error
