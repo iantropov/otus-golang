@@ -5,14 +5,11 @@ import (
 	"net"
 	"time"
 
-	"github.com/grpc-ecosystem/go-grpc-middleware"
+	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	"github.com/iantropov/otus-golang/hw12_13_14_15_calendar/internal/storage"
 	"github.com/iantropov/otus-golang/hw12_13_14_15_calendar/pkg/event_service_v1"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/reflection"
-	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 type Logger interface {
@@ -72,6 +69,10 @@ func (s *Server) Start() error {
 
 func (s *Server) Stop(ctx context.Context) error {
 	s.logger.Infof("stopping grpc at %s:%s\n", s.host, s.port)
+	if s.server == nil {
+		return nil
+	}
+
 	go func() {
 		<-ctx.Done()
 		s.server.Stop()
@@ -79,28 +80,4 @@ func (s *Server) Stop(ctx context.Context) error {
 	s.server.GracefulStop()
 
 	return nil
-}
-
-func (s *Server) Create(context.Context, *event_service_v1.CreateRequest) (*emptypb.Empty, error) {
-	s.logger.Info("HEELOO from CREATE")
-	return nil, status.Errorf(codes.Unimplemented, "method Create not implemented")
-}
-func (s *Server) Update(context.Context, *event_service_v1.UpdateRequest) (*emptypb.Empty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Update not implemented")
-}
-func (s *Server) Delete(context.Context, *event_service_v1.IDRequest) (*emptypb.Empty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Delete not implemented")
-}
-func (s *Server) Get(context.Context, *event_service_v1.IDRequest) (*event_service_v1.GetResponse, error) {
-	s.logger.Info("HEELOO from GET")
-	return nil, status.Errorf(codes.Unimplemented, "method Get not implemented")
-}
-func (s *Server) ListEventForDay(context.Context, *event_service_v1.TimeRequest) (*event_service_v1.ListEventResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ListEventForDay not implemented")
-}
-func (s *Server) ListEventForWeek(context.Context, *event_service_v1.TimeRequest) (*event_service_v1.ListEventResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ListEventForWeek not implemented")
-}
-func (s *Server) ListEventForMonth(context.Context, *event_service_v1.TimeRequest) (*event_service_v1.ListEventResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ListEventForMonth not implemented")
 }
