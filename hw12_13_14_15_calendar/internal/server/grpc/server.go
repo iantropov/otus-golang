@@ -3,42 +3,24 @@ package grpc
 import (
 	"context"
 	"net"
-	"time"
 
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
-	"github.com/iantropov/otus-golang/hw12_13_14_15_calendar/internal/storage"
+	"github.com/iantropov/otus-golang/hw12_13_14_15_calendar/internal/server"
 	"github.com/iantropov/otus-golang/hw12_13_14_15_calendar/pkg/event_service_v1"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 )
 
-type Logger interface {
-	Info(string)
-	Infof(string, ...any)
-	Error(string)
-	Errorf(string, ...any)
-}
-
-type Application interface {
-	CreateEvent(ctx context.Context, event storage.Event) error
-	UpdateEvent(ctx context.Context, id storage.EventID, event storage.Event) error
-	DeleteEvent(ctx context.Context, id storage.EventID) error
-	GetEvent(ctx context.Context, id storage.EventID) (storage.Event, error)
-	ListEventForDay(ctx context.Context, day time.Time) []storage.Event
-	ListEventForMonth(ctx context.Context, monthStart time.Time) []storage.Event
-	ListEventForWeek(ctx context.Context, weekStart time.Time) []storage.Event
-}
-
 type Server struct {
 	event_service_v1.UnimplementedEventServiceV1Server
 
 	host, port string
-	logger     Logger
-	app        Application
+	logger     server.Logger
+	app        server.Application
 	server     *grpc.Server
 }
 
-func NewServer(host, port string, logger Logger, app Application) *Server {
+func NewServer(host, port string, logger server.Logger, app server.Application) *Server {
 	return &Server{
 		host:   host,
 		port:   port,

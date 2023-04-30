@@ -5,12 +5,13 @@ import (
 	"strings"
 	"time"
 
+	"github.com/iantropov/otus-golang/hw12_13_14_15_calendar/internal/server"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/peer"
 	"google.golang.org/grpc/status"
 )
 
-func LoggingInterceptor(logger Logger) grpc.UnaryServerInterceptor {
+func LoggingInterceptor(logger server.Logger) grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
 		timeStart := time.Now()
 		res, err := handler(ctx, req)
