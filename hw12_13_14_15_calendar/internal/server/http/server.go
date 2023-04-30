@@ -119,11 +119,9 @@ func wrapHandler[Req any, Res any](handler func(ctx context.Context, req Req) (r
 }
 
 func respondWithError(resWriter http.ResponseWriter, r *http.Request, status int, text string, err error) {
-	writeErrorJSON(resWriter, text, err)
 	resWriter.Header().Add("Content-Type", "application/json")
-	setResponseCode(resWriter, r, 400)
-
-	resWriter.WriteHeader(status)
+	setResponseCode(resWriter, r, status)
+	writeErrorJSON(resWriter, text, err)
 }
 
 func respondWithSuccess(resWriter http.ResponseWriter, r *http.Request, rawJSON []byte) {
