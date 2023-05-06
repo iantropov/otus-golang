@@ -1,7 +1,80 @@
 syntax = "proto3";
 
-package event;
+package event_service_v1;
 
+option go_package = "github.com/iantropov/otus-golang/hw12_13_14_15_calendar/pkg/event_service_v1;event_service_v1";
+
+import "google/protobuf/empty.proto";
+
+// ### Описание методов
+service EventServiceV1 {
+  // * Создать (событие);
+  rpc Create (CreateRequest) returns (google.protobuf.Empty);
+
+  // * Обновить (ID события, событие);
+  rpc Update (UpdateRequest) returns (google.protobuf.Empty);
+
+  // * Удалить (ID события);
+  rpc Delete (IDRequest) returns (google.protobuf.Empty);
+
+  // * Получить (ID события);
+  rpc Get (IDRequest) returns (GetResponse);
+
+  // * СписокСобытийНаДень (дата);
+	rpc ListEventForDay(TimeRequest) returns (ListEventResponse);
+
+  // * СписокСобытийНаНеделю (дата начала недели);
+	rpc ListEventForWeek(TimeRequest) returns (ListEventResponse);
+
+  // * СписокСобытийНaМесяц (дата начала месяца).
+	rpc ListEventForMonth(TimeRequest) returns (ListEventResponse);
+}
+
+// Событие - основная сущность, содержит в себе поля:
 message Event {
-    // TODO
+  // * ID - уникальный идентификатор события (можно воспользоваться UUID);
+  string id = 1;
+
+  // * Заголовок - короткий текст;
+  string title = 2;
+
+  // * Дата и время события;
+  string starts_at = 3;
+
+  // * Длительность события (или дата и время окончания);
+  string ends_at = 4;
+
+  // * Описание события - длинный текст, опционально;
+  string description = 5;
+
+  // * ID пользователя, владельца события;
+  string user_id = 6;
+
+  // * За сколько времени высылать уведомление, опционально.
+  int32 notify_before_seconds = 7;
+}
+
+message CreateRequest {
+  Event event = 1;
+}
+
+message UpdateRequest {
+  string id = 1;
+  Event event = 2;
+}
+
+message IDRequest {
+  string id = 1;
+}
+
+message GetResponse {
+  Event event = 1;
+}
+
+message TimeRequest {
+  string at = 1;
+}
+
+message ListEventResponse {
+  repeated Event events = 1;
 }

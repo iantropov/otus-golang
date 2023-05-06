@@ -1,6 +1,7 @@
 package memorystorage
 
 import (
+	"context"
 	"sync"
 	"testing"
 	"time"
@@ -11,32 +12,33 @@ import (
 )
 
 func TestStorageBusinessLogic(t *testing.T) {
+	ctx := context.Background()
 	memStorage := New()
 
 	event := buildEvent()
 
-	err := memStorage.Create(event)
+	err := memStorage.Create(ctx, event)
 	require.Equal(t, nil, err)
 
-	resEvent, err := memStorage.Get(event.ID)
+	resEvent, err := memStorage.Get(ctx, event.ID)
 	require.Equal(t, event, resEvent)
 	require.Equal(t, nil, err)
 
 	event.UserID = gofakeit.Email()
-	err = memStorage.Update(event.ID, event)
+	err = memStorage.Update(ctx, event.ID, event)
 	require.Equal(t, nil, err)
 
-	resEvent, err = memStorage.Get(event.ID)
+	resEvent, err = memStorage.Get(ctx, event.ID)
 	require.Equal(t, event, resEvent)
 	require.Equal(t, nil, err)
 
-	resEvents := memStorage.ListEventForDay(date(2033, 6, 1))
+	resEvents := memStorage.ListEventForDay(ctx, date(2033, 6, 1))
 	require.Equal(t, []storage.Event{event}, resEvents)
 
-	err = memStorage.Delete(event.ID)
+	err = memStorage.Delete(ctx, event.ID)
 	require.Equal(t, nil, err)
 
-	_, err = memStorage.Get(event.ID)
+	_, err = memStorage.Get(ctx, event.ID)
 	require.Equal(t, ErrEventNotFound, err)
 }
 
@@ -144,12 +146,13 @@ func TestStorageCreate(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.title, func(t *testing.T) {
+			ctx := context.Background()
 			memStorage := New()
 
-			err := memStorage.Create(existingEvent)
+			err := memStorage.Create(ctx, existingEvent)
 			require.Equal(t, nil, err)
 
-			err = memStorage.Create(tt.event)
+			err = memStorage.Create(ctx, tt.event)
 			require.Equal(t, tt.err, err)
 		})
 	}
@@ -181,12 +184,13 @@ func TestStorageGet(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.title, func(t *testing.T) {
+			ctx := context.Background()
 			memStorage := New()
 
-			err := memStorage.Create(existingEvent)
+			err := memStorage.Create(ctx, existingEvent)
 			require.Equal(t, nil, err)
 
-			event, err := memStorage.Get(tt.eventID)
+			event, err := memStorage.Get(ctx, tt.eventID)
 			require.Equal(t, tt.event, event)
 			require.Equal(t, tt.err, err)
 		})
@@ -252,15 +256,16 @@ func TestStorageUpdate(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.title, func(t *testing.T) {
+			ctx := context.Background()
 			memStorage := New()
 
-			err := memStorage.Create(existingEvent)
+			err := memStorage.Create(ctx, existingEvent)
 			require.Equal(t, nil, err)
 
-			err = memStorage.Create(existingEvent2)
+			err = memStorage.Create(ctx, existingEvent2)
 			require.Equal(t, nil, err)
 
-			err = memStorage.Update(tt.eventID, tt.event)
+			err = memStorage.Update(ctx, tt.eventID, tt.event)
 			require.Equal(t, tt.err, err)
 		})
 	}
@@ -291,18 +296,20 @@ func TestStorageDelete(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.title, func(t *testing.T) {
+			ctx := context.Background()
 			memStorage := New()
 
-			err := memStorage.Create(existingEvent)
+			err := memStorage.Create(ctx, existingEvent)
 			require.Equal(t, nil, err)
 
-			err = memStorage.Delete(tt.eventID)
+			err = memStorage.Delete(ctx, tt.eventID)
 			require.Equal(t, tt.err, err)
 		})
 	}
 }
 
 func TestStorageListEventForDay(t *testing.T) {
+	ctx := context.Background()
 	date := date(2050, 1, 1)
 	events := []storage.Event{
 		buildEventWith(map[string]any{
@@ -321,15 +328,16 @@ func TestStorageListEventForDay(t *testing.T) {
 
 	memStorage := New()
 	for i := range events {
-		err := memStorage.Create(events[i])
+		err := memStorage.Create(ctx, events[i])
 		require.Equal(t, nil, err)
 	}
 
-	dayEvents := memStorage.ListEventForDay(date)
+	dayEvents := memStorage.ListEventForDay(ctx, date)
 	require.ElementsMatch(t, dayEvents, []storage.Event{events[0], events[1]})
 }
 
 func TestStorageListEventForWeek(t *testing.T) {
+	ctx := context.Background()
 	date := date(2050, 1, 1)
 	events := []storage.Event{
 		buildEventWith(map[string]any{
@@ -352,15 +360,16 @@ func TestStorageListEventForWeek(t *testing.T) {
 
 	memStorage := New()
 	for i := range events {
-		err := memStorage.Create(events[i])
+		err := memStorage.Create(ctx, events[i])
 		require.Equal(t, nil, err)
 	}
 
-	weekEvents := memStorage.ListEventForWeek(date)
+	weekEvents := memStorage.ListEventForWeek(ctx, date)
 	require.ElementsMatch(t, weekEvents, []storage.Event{events[0], events[1], events[2]})
 }
 
 func TestStorageListEventFoMonth(t *testing.T) {
+	ctx := context.Background()
 	date := date(2050, 1, 1)
 	events := []storage.Event{
 		buildEventWith(map[string]any{
@@ -379,17 +388,18 @@ func TestStorageListEventFoMonth(t *testing.T) {
 
 	memStorage := New()
 	for i := range events {
-		err := memStorage.Create(events[i])
+		err := memStorage.Create(ctx, events[i])
 		require.Equal(t, nil, err)
 	}
 
-	weekEvents := memStorage.ListEventForMonth(date)
+	weekEvents := memStorage.ListEventForMonth(ctx, date)
 	require.ElementsMatch(t, weekEvents, []storage.Event{events[0], events[1]})
 }
 
 func TestStorageConcurrentReadsAndWrites(_ *testing.T) {
 	const iterationsCount = 1_000_000
 
+	ctx := context.Background()
 	date := date(2050, 1, 1)
 	memStorage := New()
 	wg := sync.WaitGroup{}
@@ -412,14 +422,14 @@ func TestStorageConcurrentReadsAndWrites(_ *testing.T) {
 	go func() {
 		defer wg.Done()
 		for i := 0; i < iterationsCount; i++ {
-			memStorage.Create(events[i])
+			memStorage.Create(ctx, events[i])
 		}
 	}()
 
 	go func() {
 		defer wg.Done()
 		for i := 0; i < iterationsCount; i++ {
-			memStorage.Update(eventIDs[i], buildEventWith(map[string]any{
+			memStorage.Update(ctx, eventIDs[i], buildEventWith(map[string]any{
 				"StartsAt": events[i].StartsAt,
 				"EndsAt":   events[i].EndsAt,
 				"ID":       eventIDs[i],
@@ -431,7 +441,7 @@ func TestStorageConcurrentReadsAndWrites(_ *testing.T) {
 	go func() {
 		defer wg.Done()
 		for i := 0; i < iterationsCount; i++ {
-			memStorage.Delete(eventIDs[i])
+			memStorage.Delete(ctx, eventIDs[i])
 		}
 	}()
 

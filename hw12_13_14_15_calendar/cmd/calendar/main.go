@@ -7,11 +7,14 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 
 	"github.com/iantropov/otus-golang/hw12_13_14_15_calendar/internal/app"
 	"github.com/iantropov/otus-golang/hw12_13_14_15_calendar/internal/config"
+	"github.com/iantropov/otus-golang/hw12_13_14_15_calendar/internal/server"
+	internalgrpc "github.com/iantropov/otus-golang/hw12_13_14_15_calendar/internal/server/grpc"
 	internalhttp "github.com/iantropov/otus-golang/hw12_13_14_15_calendar/internal/server/http"
 	"github.com/iantropov/otus-golang/hw12_13_14_15_calendar/internal/storage"
 	memorystorage "github.com/iantropov/otus-golang/hw12_13_14_15_calendar/internal/storage/memory"
@@ -22,7 +25,7 @@ import (
 var configFile string
 
 func init() {
-	flag.StringVar(&configFile, "config", "/etc/calendar/config.toml", "Path to configuration file")
+	flag.StringVar(&configFile, "config", "../../configs/config.memory.toml", "Path to configuration file")
 }
 
 func main() {
@@ -75,26 +78,16 @@ func main() {
 
 	calendar := app.New(logg, appStorage)
 
-	server := internalhttp.NewServer(config.HTTP.Host, config.HTTP.Port, logg, calendar)
+	serversWg := sync.WaitGroup{}
+	serversWg.Add(2)
 
-	go func() {
-		<-ctx.Done()
+	httpServer := internalhttp.NewServer(config.HTTP.Host, config.HTTP.Port, logg, calendar)
+	grpcServer := internalgrpc.NewServer(config.GRPC.Host, config.GRPC.Port, logg, calendar)
 
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
-		defer cancel()
+	startServer(ctx, cancel, httpServer, "http", logg, &serversWg)
+	startServer(ctx, cancel, grpcServer, "grpc", logg, &serversWg)
 
-		if err := server.Stop(ctx); err != nil {
-			logg.Error("failed to stop http server: " + err.Error())
-		}
-	}()
-
-	logg.Info("calendar is running...")
-
-	if err := server.Start(ctx); err != nil {
-		logg.Error("failed to start http server: " + err.Error())
-		cancel()
-		os.Exit(1)
-	}
+	serversWg.Wait()
 }
 
 func getSQLDb(dsn string) (*sql.DB, error) {
@@ -103,4 +96,34 @@ func getSQLDb(dsn string) (*sql.DB, error) {
 		return nil, err
 	}
 	return db, nil
+}
+
+func startServer(
+	ctx context.Context,
+	cancel func(),
+	server server.Server,
+	serverName string,
+	logg *logger.Logger,
+	wg *sync.WaitGroup,
+) {
+	go func() {
+		defer wg.Done()
+
+		<-ctx.Done()
+
+		stopCtx, cancel := context.WithTimeout(context.Background(), time.Second*3)
+		defer cancel()
+
+		if err := server.Stop(stopCtx); err != nil {
+			logg.Errorf("failed to stop %s server: %v\n", serverName, err)
+		}
+	}()
+	go func() {
+		logg.Infof("calendar %s api is running...\n", serverName)
+
+		if err := server.Start(); err != nil {
+			logg.Errorf("%s server: %v\n", serverName, err)
+			cancel()
+		}
+	}()
 }

@@ -7,3 +7,7 @@ type = "memory"
 [http]
 host = "127.0.0.1"
 port = "3000"
+
+[grpc]
+host = "127.0.0.1"
+port = "5000"
