@@ -24,7 +24,7 @@ type Storage interface {
 	ListEventForMonth(ctx context.Context, monthStart time.Time) []Event
 	ListEventForWeek(ctx context.Context, weekStart time.Time) []Event
 	ListEventBeforeTime(ctx context.Context, before time.Time) []Event
-	ListEventsCreatedAfter(ctx context.Context, after time.Time) []Event
+	ListEventCreatedAfter(ctx context.Context, after time.Time) []Event
 }
 
 // ### Описание методов

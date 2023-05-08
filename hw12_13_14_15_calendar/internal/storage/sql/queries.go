@@ -20,7 +20,7 @@ var (
 	`
 	DeleteEvent           = `DELETE FROM events WHERE id=$1`
 	SelectEventsForPeriod = fmt.Sprintf(
-		`SELECT %s FROM events WHERE start_at >= $1 AND start_at < $2`,
+		`SELECT %s FROM events WHERE starts_at >= $1 AND starts_at < $2`,
 		eventAttributesWithID,
 	)
 	SelectEventsBeforeTime = fmt.Sprintf(

@@ -5,10 +5,5 @@ level = "INFO"
 type = "sql"
 dsn="host=localhost port=5432 user=calendar password=password dbname=calendar sslmode=disable"
 
-[http]
-host = "127.0.0.1"
-port = "3000"
-
-[grpc]
-host = "127.0.0.1"
-port = "5000"
+[scheduler]
+periodSeconds=10

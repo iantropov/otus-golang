@@ -135,7 +135,7 @@ func (s *Storage) ListEventBeforeTime(ctx context.Context, before time.Time) []s
 	})
 }
 
-func (s *Storage) ListEventsCreatedAfter(ctx context.Context, after time.Time) []storage.Event {
+func (s *Storage) ListEventCreatedAfter(ctx context.Context, after time.Time) []storage.Event {
 	return s.rangeEventsWith(func(e *storage.Event) bool {
 		return e.CreatedAt.After(after)
 	})

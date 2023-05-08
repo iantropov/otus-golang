@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/iantropov/otus-golang/hw12_13_14_15_calendar/internal/config"
 	"github.com/iantropov/otus-golang/hw12_13_14_15_calendar/internal/scheduler"
@@ -50,7 +51,7 @@ func main() {
 	}
 	defer storage.Close(ctx)
 
-	calendarScheduler := scheduler.New(logg, storage)
-
-	logg.Info("HEELO FROM SCHEDULER!!")
+	period := time.Duration(config.Scheduler.PeriodSeconds) * time.Second
+	calendarScheduler := scheduler.New(logg, storage, period)
+	calendarScheduler.Schedule(ctx)
 }

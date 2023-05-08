@@ -11,13 +11,13 @@ build-calendar:
 	go build -v -o $(BIN_CALENDAR) -ldflags "$(LDFLAGS)" ./cmd/calendar
 
 run-calendar: build-calendar
-	$(BIN_CALENDAR) -config ./configs/calendar.memory.toml
+	$(BIN_CALENDAR) -config ./configs/calendar.sql.toml
 
 build-calendar-scheduler:
 	go build -v -o $(BIN_CALENDAR_SCHEDULER) -ldflags "$(LDFLAGS)" ./cmd/calendar_scheduler
 
 run-calendar-scheduler: build-calendar-scheduler
-	$(BIN_CALENDAR_SCHEDULER) -config ./configs/calendar_scheduler.memory.toml
+	$(BIN_CALENDAR_SCHEDULER) -config ./configs/calendar_scheduler.sql.toml
 
 build-img:
 	docker build \

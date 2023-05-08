@@ -30,7 +30,6 @@ func SetupStorage(ctx context.Context, config config.Config, logg *logger.Logger
 		if err != nil {
 			return nil, fmt.Errorf("failed to get sqlstorage: %w", err)
 		}
-		defer sqlStorage.Close(ctx)
 
 		appStorage = sqlStorage
 	}
