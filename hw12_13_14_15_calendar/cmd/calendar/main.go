@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"database/sql"
 	"flag"
 	"log"
 	"os"
@@ -16,9 +15,7 @@ import (
 	"github.com/iantropov/otus-golang/hw12_13_14_15_calendar/internal/server"
 	internalgrpc "github.com/iantropov/otus-golang/hw12_13_14_15_calendar/internal/server/grpc"
 	internalhttp "github.com/iantropov/otus-golang/hw12_13_14_15_calendar/internal/server/http"
-	"github.com/iantropov/otus-golang/hw12_13_14_15_calendar/internal/storage"
-	memorystorage "github.com/iantropov/otus-golang/hw12_13_14_15_calendar/internal/storage/memory"
-	sqlstorage "github.com/iantropov/otus-golang/hw12_13_14_15_calendar/internal/storage/sql"
+	"github.com/iantropov/otus-golang/hw12_13_14_15_calendar/internal/setup"
 	"github.com/iantropov/otus-golang/hw12_13_14_15_calendar/pkg/logger"
 )
 
@@ -46,37 +43,19 @@ func main() {
 		log.Fatal("failed to create logger", err)
 	}
 
-	var appStorage storage.Storage
-	if config.Storage.Type == "memory" {
-		appStorage = memorystorage.New()
-	}
-
 	ctx, cancel := signal.NotifyContext(context.Background(),
 		syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
 	defer cancel()
 
-	if config.Storage.Type == "sql" {
-		var db *sql.DB
-		db, err = getSQLDb(config.Storage.DSN)
-		if err != nil {
-			logg.Error("failed to get DB: " + err.Error())
-			cancel()
-			os.Exit(1) //nolint:gocritic
-		}
-
-		sqlStorage := sqlstorage.New(logg, db)
-		err = sqlStorage.Connect(ctx)
-		if err != nil {
-			logg.Error("failed to get sqlstorage: " + err.Error())
-			cancel()
-			os.Exit(1)
-		}
-		defer sqlStorage.Close(ctx)
-
-		appStorage = sqlStorage
+	storage, err := setup.SetupStorage(ctx, config, logg)
+	if err != nil {
+		logg.Error(err.Error())
+		cancel()
+		os.Exit(1) //nolint:gocritic
 	}
+	defer storage.Close(ctx)
 
-	calendar := app.New(logg, appStorage)
+	calendar := app.New(logg, storage)
 
 	serversWg := sync.WaitGroup{}
 	serversWg.Add(2)
@@ -88,14 +67,6 @@ func main() {
 	startServer(ctx, cancel, grpcServer, "grpc", logg, &serversWg)
 
 	serversWg.Wait()
-}
-
-func getSQLDb(dsn string) (*sql.DB, error) {
-	db, err := sql.Open("postgres", dsn)
-	if err != nil {
-		return nil, err
-	}
-	return db, nil
 }
 
 func startServer(

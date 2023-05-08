@@ -34,6 +34,10 @@ func New() *Storage {
 	}
 }
 
+func (s *Storage) Close(_ context.Context) error {
+	return nil
+}
+
 func (s *Storage) Create(_ context.Context, event storage.Event) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -114,15 +118,27 @@ func (s *Storage) Delete(_ context.Context, id storage.EventID) error {
 }
 
 func (s *Storage) ListEventForDay(_ context.Context, day time.Time) []storage.Event {
-	return s.rangeEvents(day, day.AddDate(0, 0, 1))
+	return s.rangeEventsIn(day, day.AddDate(0, 0, 1))
 }
 
 func (s *Storage) ListEventForWeek(_ context.Context, weekStart time.Time) []storage.Event {
-	return s.rangeEvents(weekStart, weekStart.AddDate(0, 0, 7))
+	return s.rangeEventsIn(weekStart, weekStart.AddDate(0, 0, 7))
 }
 
 func (s *Storage) ListEventForMonth(_ context.Context, monthStart time.Time) []storage.Event {
-	return s.rangeEvents(monthStart, monthStart.AddDate(0, 1, 0))
+	return s.rangeEventsIn(monthStart, monthStart.AddDate(0, 1, 0))
+}
+
+func (s *Storage) ListEventBeforeTime(ctx context.Context, before time.Time) []storage.Event {
+	return s.rangeEventsWith(func(e *storage.Event) bool {
+		return e.EndsAt.Before(before)
+	})
+}
+
+func (s *Storage) ListEventsCreatedAfter(ctx context.Context, after time.Time) []storage.Event {
+	return s.rangeEventsWith(func(e *storage.Event) bool {
+		return e.CreatedAt.After(after)
+	})
 }
 
 func (s *Storage) isValidEvent(event storage.Event) bool {
@@ -141,43 +157,23 @@ func (s *Storage) isValidEvent(event storage.Event) bool {
 	return true
 }
 
-func (s *Storage) rangeEvents(startTime time.Time, endTime time.Time) []storage.Event {
+func (s *Storage) rangeEventsIn(startTime time.Time, endTime time.Time) []storage.Event {
+	return s.rangeEventsWith(func(e *storage.Event) bool {
+		return !e.StartsAt.Before(startTime) && e.StartsAt.Before(endTime)
+	})
+}
+
+func (s *Storage) rangeEventsWith(filter func(*storage.Event) bool) []storage.Event {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
 	res := make([]storage.Event, 0)
 
 	for _, event := range s.eventsByIDMap {
-		if !event.StartsAt.Before(startTime) && event.StartsAt.Before(endTime) {
+		if filter(event) {
 			res = append(res, *event)
 		}
 	}
 
 	return res
 }
-
-// TODO
-
-// Событие - основная сущность, содержит в себе поля:
-// * ID - уникальный идентификатор события (можно воспользоваться UUID);
-// * Заголовок - короткий текст;
-// * Дата и время события;
-// * Длительность события (или дата и время окончания);
-// * Описание события - длинный текст, опционально;
-// * ID пользователя, владельца события;
-// * За сколько времени высылать уведомление, опционально.
-
-// #### Уведомление
-// Уведомление - временная сущность, в БД не хранится, складывается в очередь для рассыльщика, содержит поля:
-// * ID события;
-// * Заголовок события;
-// * Дата события;
-// * Пользователь, которому отправлять.
-
-// ### Описание методов
-// * Создать (событие);
-// * Обновить (ID события, событие);
-// * Удалить (ID события);
-// * СписокСобытийНаДень (дата);
-// * СписокСобытийНаНеделю (дата начала недели);
-// * СписокСобытийНaМесяц (дата начала месяца).
