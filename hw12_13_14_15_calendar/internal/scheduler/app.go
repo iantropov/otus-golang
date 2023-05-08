@@ -2,6 +2,7 @@ package scheduler
 
 import (
 	"context"
+	"encoding/json"
 	"sync"
 	"time"
 
@@ -23,17 +24,24 @@ type Storage interface {
 	Delete(ctx context.Context, id storage.EventID) error
 }
 
+//go:generate mockery --name Storage
+type Producer interface {
+	Produce(ctx context.Context, message []byte) error
+}
+
 type Scheduler struct {
 	logger          Logger
 	storage         Storage
+	producer        Producer
 	period          time.Duration
 	lastScheduledAt time.Time
 }
 
-func New(logger Logger, storage Storage, period time.Duration) *Scheduler {
+func New(logger Logger, storage Storage, producer Producer, period time.Duration) *Scheduler {
 	return &Scheduler{
 		logger:          logger,
 		storage:         storage,
+		producer:        producer,
 		period:          period,
 		lastScheduledAt: time.Now(),
 	}
@@ -89,10 +97,19 @@ func (s *Scheduler) scheduleEvents(ctx context.Context) {
 	events := s.storage.ListEventCreatedAfter(ctx, s.lastScheduledAt)
 	for i := range events {
 		if events[i].StartsAt.Add(-events[i].NotifyBefore).After(time.Now()) {
+			err := s.produceEvent(ctx, events[i])
+			if err != nil {
+				s.logger.Errorf("Failed to schedule event %s: %\n", events[i].ID, err)
+				continue
+			}
 			s.logger.Infof("Successfully SCHEDULED event %v\n", events[i])
 		}
 		s.lastScheduledAt = events[i].CreatedAt
 	}
+}
+
+func (s *Scheduler) produceEvent(ctx context.Context, event storage.Event) error {
+	bytes, err := json.Marshal(event)
 }
 
 // #### Уведомление

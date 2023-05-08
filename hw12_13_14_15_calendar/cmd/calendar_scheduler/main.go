@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/iantropov/otus-golang/hw12_13_14_15_calendar/internal/config"
+	"github.com/iantropov/otus-golang/hw12_13_14_15_calendar/internal/rabbit"
 	"github.com/iantropov/otus-golang/hw12_13_14_15_calendar/internal/scheduler"
 	"github.com/iantropov/otus-golang/hw12_13_14_15_calendar/internal/setup"
 	"github.com/iantropov/otus-golang/hw12_13_14_15_calendar/pkg/logger"
@@ -43,7 +44,7 @@ func main() {
 		syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
 	defer cancel()
 
-	storage, err := setup.SetupStorage(ctx, config, logg)
+	storage, err := setup.SetupStorage(ctx, config.Storage, logg)
 	if err != nil {
 		logg.Error(err.Error())
 		cancel()
@@ -51,7 +52,20 @@ func main() {
 	}
 	defer storage.Close(ctx)
 
-	period := time.Duration(config.Scheduler.PeriodSeconds) * time.Second
-	calendarScheduler := scheduler.New(logg, storage, period)
+	rabbitConn, err := setup.SetupRabbit(config.Rabbit)
+	if err != nil {
+		logg.Error(err.Error())
+		cancel()
+		os.Exit(1) //nolint:gocritic
+	}
+	defer rabbitConn.Close()
+
+	rabbitProducer := rabbit.NewProducer(logg, rabbitConn)
+
+	calendarScheduler := scheduler.New(logg, storage, rabbitProducer, getSchedulerPeriod(config))
 	calendarScheduler.Schedule(ctx)
+}
+
+func getSchedulerPeriod(config config.Config) time.Duration {
+	return time.Duration(config.Scheduler.PeriodSeconds) * time.Second
 }
