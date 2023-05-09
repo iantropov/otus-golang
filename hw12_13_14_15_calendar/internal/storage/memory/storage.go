@@ -129,13 +129,13 @@ func (s *Storage) ListEventForMonth(_ context.Context, monthStart time.Time) []s
 	return s.rangeEventsIn(monthStart, monthStart.AddDate(0, 1, 0))
 }
 
-func (s *Storage) ListEventBeforeTime(ctx context.Context, before time.Time) []storage.Event {
+func (s *Storage) ListEventBeforeTime(_ context.Context, before time.Time) []storage.Event {
 	return s.rangeEventsWith(func(e *storage.Event) bool {
 		return e.EndsAt.Before(before)
 	})
 }
 
-func (s *Storage) ListEventCreatedAfter(ctx context.Context, after time.Time) []storage.Event {
+func (s *Storage) ListEventCreatedAfter(_ context.Context, after time.Time) []storage.Event {
 	return s.rangeEventsWith(func(e *storage.Event) bool {
 		return e.CreatedAt.After(after)
 	})

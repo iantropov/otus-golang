@@ -9,8 +9,8 @@ import (
 type Notification struct {
 	ID       storage.EventID `json:"id"`
 	Title    string          `json:"title"`
-	StartsAt time.Time       `json:"starts_at"`
-	UserID   string          `json:"user_id"`
+	StartsAt time.Time       `json:"startsAt"`
+	UserID   string          `json:"userId"`
 }
 
 // #### Уведомление

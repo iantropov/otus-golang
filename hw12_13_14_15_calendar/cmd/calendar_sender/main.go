@@ -43,7 +43,7 @@ func main() {
 		syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
 	defer cancel()
 
-	rabbitConn, err := setup.SetupRabbit(config.Rabbit)
+	rabbitConn, err := setup.Rabbit(config.Rabbit)
 	if err != nil {
 		logg.Error(err.Error())
 		cancel()

@@ -12,7 +12,7 @@ import (
 	"github.com/iantropov/otus-golang/hw12_13_14_15_calendar/pkg/logger"
 )
 
-func SetupStorage(ctx context.Context, config config.StorageConf, logg *logger.Logger) (storage.Storage, error) {
+func Storage(ctx context.Context, config config.StorageConf, logg *logger.Logger) (storage.Storage, error) {
 	var appStorage storage.Storage
 	if config.Type == "memory" {
 		appStorage = memorystorage.New()

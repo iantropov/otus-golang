@@ -14,6 +14,7 @@ import (
 	"github.com/iantropov/otus-golang/hw12_13_14_15_calendar/internal/scheduler"
 	"github.com/iantropov/otus-golang/hw12_13_14_15_calendar/internal/setup"
 	"github.com/iantropov/otus-golang/hw12_13_14_15_calendar/pkg/logger"
+	_ "github.com/lib/pq"
 )
 
 var configFile string
@@ -44,7 +45,7 @@ func main() {
 		syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
 	defer cancel()
 
-	storage, err := setup.SetupStorage(ctx, config.Storage, logg)
+	storage, err := setup.Storage(ctx, config.Storage, logg)
 	if err != nil {
 		logg.Error(err.Error())
 		cancel()
@@ -52,11 +53,11 @@ func main() {
 	}
 	defer storage.Close(ctx)
 
-	rabbitConn, err := setup.SetupRabbit(config.Rabbit)
+	rabbitConn, err := setup.Rabbit(config.Rabbit)
 	if err != nil {
 		logg.Error(err.Error())
 		cancel()
-		os.Exit(1) //nolint:gocritic
+		os.Exit(1)
 	}
 	defer rabbitConn.Close()
 

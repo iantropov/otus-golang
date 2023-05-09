@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/iantropov/otus-golang/hw12_13_14_15_calendar/internal/storage"
-	_ "github.com/lib/pq"
 )
 
 type Logger interface {

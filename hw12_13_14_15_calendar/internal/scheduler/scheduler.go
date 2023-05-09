@@ -75,7 +75,6 @@ func (s *Scheduler) Schedule(ctx context.Context) {
 				s.scheduleEvents(ctx)
 			}
 		}
-
 	}()
 
 	s.logger.Info("Scheduling events...")

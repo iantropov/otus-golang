@@ -26,6 +26,6 @@ func (p *Producer) Produce(ctx context.Context, message []byte) error {
 		false,             // immediate
 		amqp.Publishing{
 			ContentType: "text/plain",
-			Body:        []byte(message),
+			Body:        message,
 		})
 }
