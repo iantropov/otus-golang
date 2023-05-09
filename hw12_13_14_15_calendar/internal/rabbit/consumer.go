@@ -19,7 +19,7 @@ func NewConsumer(logger Logger, conn *Connection) *Consumer {
 	}
 }
 
-func (c *Consumer) Consume(ctx context.Context, message []byte) (<-chan []byte, error) {
+func (c *Consumer) Consume(ctx context.Context) (<-chan []byte, error) {
 	msgs, err := c.conn.ch.Consume(
 		c.conn.queue.Name, // queue
 		"",                // consumer

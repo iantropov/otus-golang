@@ -21,9 +21,9 @@ run-calendar-scheduler: build-calendar-scheduler
 	$(BIN_CALENDAR_SCHEDULER) -config ./configs/calendar_scheduler.sql.toml
 
 build-calendar-sender:
-	go build -v -o $(BIN_CALENDAR_SENDER) -ldflags "$(LDFLAGS)" ./cmd/calendar_scheduler
+	go build -v -o $(BIN_CALENDAR_SENDER) -ldflags "$(LDFLAGS)" ./cmd/calendar_sender
 
-run-calendar-scheduler: build-calendar-sender
+run-calendar-sender: build-calendar-sender
 	$(BIN_CALENDAR_SENDER) -config ./configs/calendar_sender.toml
 
 build-img:

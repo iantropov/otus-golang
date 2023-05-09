@@ -39,13 +39,15 @@ func (s *Sender) Start(ctx context.Context) error {
 		return fmt.Errorf("failed to consume: %w", err)
 	}
 
+	s.logger.Info("Sending events...")
+
 	var notification notifications.Notification
 	for msg := range messages {
 		err := json.Unmarshal(msg, &notification)
 		if err != nil {
 			s.logger.Errorf("Failed to unmarshal notification: %v\n", err)
 		}
-		s.logger.Infof("SEND NOTIFICATION: %+v", notification)
+		s.logger.Infof("SEND NOTIFICATION: %#v\n", notification)
 	}
 
 	return nil
