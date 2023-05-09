@@ -6,13 +6,6 @@ import (
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
-type Logger interface {
-	Info(string)
-	Infof(string, ...any)
-	Error(string)
-	Errorf(string, ...any)
-}
-
 type Producer struct {
 	logger Logger
 	conn   *Connection

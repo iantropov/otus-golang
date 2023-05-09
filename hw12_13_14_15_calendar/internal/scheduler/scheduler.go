@@ -3,9 +3,11 @@ package scheduler
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"sync"
 	"time"
 
+	"github.com/iantropov/otus-golang/hw12_13_14_15_calendar/internal/notifications"
 	"github.com/iantropov/otus-golang/hw12_13_14_15_calendar/internal/storage"
 )
 
@@ -102,19 +104,27 @@ func (s *Scheduler) scheduleEvents(ctx context.Context) {
 				s.logger.Errorf("Failed to schedule event %s: %\n", events[i].ID, err)
 				continue
 			}
-			s.logger.Infof("Successfully SCHEDULED event %v\n", events[i])
+			s.logger.Infof("Successfully scheduled event %s\n", events[i].ID)
 		}
 		s.lastScheduledAt = events[i].CreatedAt
 	}
 }
 
 func (s *Scheduler) produceEvent(ctx context.Context, event storage.Event) error {
-	bytes, err := json.Marshal(event)
-}
+	bytes, err := json.Marshal(notifications.Notification{
+		ID:       event.ID,
+		Title:    event.Title,
+		StartsAt: event.StartsAt,
+		UserID:   event.UserID,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to marsal notification: %w", err)
+	}
 
-// #### Уведомление
-// Уведомление - временная сущность, в БД не хранится, складывается в очередь для рассыльщика, содержит поля:
-// * ID события;
-// * Заголовок события;
-// * Дата события;
-// * Пользователь, которому отправлять.
+	err = s.producer.Produce(ctx, bytes)
+	if err != nil {
+		return fmt.Errorf("failed to produce notification: %w", err)
+	}
+
+	return nil
+}

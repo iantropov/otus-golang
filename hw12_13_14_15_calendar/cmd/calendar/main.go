@@ -47,7 +47,7 @@ func main() {
 		syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
 	defer cancel()
 
-	storage, err := setup.SetupStorage(ctx, config, logg)
+	storage, err := setup.SetupStorage(ctx, config.Storage, logg)
 	if err != nil {
 		logg.Error(err.Error())
 		cancel()
