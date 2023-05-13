@@ -63,6 +63,15 @@ generate: install-grpc-deps
 			--go-grpc_out=pkg/event_service_v1  --go-grpc_opt=paths=source_relative \
 			EventService.proto
 
+
+.PHONY: up
+up:
+	docker-compose up -d
+
+.PHONY: down
+down:
+	docker-compose down
+
 .PHONY: build build-calendar build-calendar-scheduler build-calendar-sender
 .PHONY: run-calendar run-calendar-scheduler run-calendar-sender
 .PHONY: version-calendar version-calendar-scheduler version-calendar-sender

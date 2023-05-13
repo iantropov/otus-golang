@@ -1,16 +1,37 @@
 version: "3"
 
 services:
-  app:
+  calendar:
     build:
-      dockerfile: build/Dockerfile
+      dockerfile: build/Dockerfile.calendar
       context: .
       args:
-        - CONFIG_FILE=./configs/config.sql.toml
+        - CONFIG_FILE=./configs/calendar.compose.sql.toml
     ports:
-      - 3000:3000
+      - 8888:8888
+      - 5000:5000
     depends_on:
       calendar_db:
+        condition: service_healthy
+  calendar_scheduler:
+    build:
+      dockerfile: build/Dockerfile.calendar_scheduler
+      context: .
+      args:
+        - CONFIG_FILE=./configs/calendar_scheduler.compose.sql.toml
+    depends_on:
+      calendar_db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+  calendar_sender:
+    build:
+      dockerfile: build/Dockerfile.calendar_sender
+      context: .
+      args:
+        - CONFIG_FILE=./configs/calendar_sender.compose.toml
+    depends_on:
+      rabbitmq:
         condition: service_healthy
   calendar_db:
     image: postgres:15.1
