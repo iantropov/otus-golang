@@ -66,6 +66,7 @@ generate: install-grpc-deps
 
 .PHONY: up
 up:
+	docker-compose up migrate_db
 	docker-compose up -d
 
 .PHONY: down
