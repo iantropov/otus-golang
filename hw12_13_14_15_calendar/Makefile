@@ -67,11 +67,31 @@ generate: install-grpc-deps
 .PHONY: up
 up:
 	docker-compose up migrate_db
-	docker-compose up -d
+	docker-compose up -d --build
 
 .PHONY: down
 down:
 	docker-compose down
+
+
+.PHONY: functest
+functest:
+	set -e ;\
+	docker-compose -f docker-compose.functest.yml up migrate_db ;\
+	docker-compose -f docker-compose.functest.yml up --build -d ;\
+	test_status_code=0 ;\
+	docker-compose -f docker-compose.functest.yml run functest go test || test_status_code=$$? ;\
+	docker-compose -f docker-compose.functest.yml down ;\
+	exit $$test_status_code ;
+
+.PHONY: functest-cleanup
+functest-cleanup:
+	docker-compose -f docker-compose.functest.yml down \
+        --rmi local \
+		--volumes \
+		--remove-orphans \
+		--timeout 60; \
+  	docker-compose -f docker-compose.functest.yml rm -f
 
 .PHONY: build build-calendar build-calendar-scheduler build-calendar-sender
 .PHONY: run-calendar run-calendar-scheduler run-calendar-sender

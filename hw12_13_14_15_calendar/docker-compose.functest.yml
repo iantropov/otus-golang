@@ -1,0 +1,80 @@
+version: "3"
+
+services:
+  calendar:
+    build:
+      dockerfile: build/Dockerfile.calendar
+      context: .
+      args:
+        - CONFIG_FILE=./configs/calendar.compose.sql.toml
+    ports:
+      - 8888:8888
+      - 5000:5000
+    depends_on:
+      calendar_db:
+        condition: service_healthy
+  calendar_scheduler:
+    build:
+      dockerfile: build/Dockerfile.calendar_scheduler
+      context: .
+      args:
+        - CONFIG_FILE=./configs/calendar_scheduler.compose.sql.toml
+    depends_on:
+      calendar_db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+  calendar_sender:
+    build:
+      dockerfile: build/Dockerfile.calendar_sender
+      context: .
+      args:
+        - CONFIG_FILE=./configs/calendar_sender.compose.toml
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+  calendar_db:
+    image: postgres:15.1
+    environment:
+      POSTGRES_DB: calendar
+      POSTGRES_USER: calendar
+      POSTGRES_PASSWORD: password
+      PGDATA: "/var/lib/postgresql/data/pgdata"
+    volumes:
+      - ./pgdata:/var/lib/postgresql/data
+    ports:
+      - 5432:5432
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U calendar -d calendar"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+  migrate_db:
+    image: gomicro/goose:latest
+    command: 'goose -dir /migrations postgres "postgres://calendar:password@calendar_db:5432/calendar?sslmode=disable" up'
+    volumes:
+      - ./migrations:/migrations
+    depends_on:
+      calendar_db:
+        condition: service_healthy
+  rabbitmq:
+    image: rabbitmq:3.11.15-management
+    ports:
+      - '5672:5672'
+      - '15672:15672'
+    volumes:
+      - './rmqdata:/var/lib/rabbitmq/mnesia/'
+    healthcheck:
+      test: rabbitmq-diagnostics -q ping
+      interval: 30s
+      timeout: 30s
+      retries: 3
+
+  functest:
+    build: functest
+    command: "true"
+    environment:
+      TESTS_AMQP_DSN: "amqp://guest:guest@rabbit:5672/"
+      TESTS_POSTGRES_DSN: "host=calendar_db port=5432 user=calendar password=password dbname=calendar sslmode=disable"
