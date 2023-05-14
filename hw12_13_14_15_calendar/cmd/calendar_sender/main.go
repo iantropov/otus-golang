@@ -9,9 +9,8 @@ import (
 	"syscall"
 
 	"github.com/iantropov/otus-golang/hw12_13_14_15_calendar/internal/config"
-	"github.com/iantropov/otus-golang/hw12_13_14_15_calendar/internal/rabbit"
+	queueSetup "github.com/iantropov/otus-golang/hw12_13_14_15_calendar/internal/queue/setup"
 	"github.com/iantropov/otus-golang/hw12_13_14_15_calendar/internal/sender"
-	"github.com/iantropov/otus-golang/hw12_13_14_15_calendar/internal/setup"
 	"github.com/iantropov/otus-golang/hw12_13_14_15_calendar/pkg/logger"
 )
 
@@ -43,16 +42,16 @@ func main() {
 		syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
 	defer cancel()
 
-	rabbitConn, err := setup.Rabbit(config.Rabbit)
+	queueConn, err := queueSetup.Setup(config.Queue)
 	if err != nil {
 		logg.Error(err.Error())
 		cancel()
 		os.Exit(1) //nolint:gocritic
 	}
-	defer rabbitConn.Close()
+	defer queueConn.Close()
 
-	rabbitConsumer := rabbit.NewConsumer(logg, rabbitConn)
+	consumer := queueConn.NewConsumer(logg)
 
-	calendarSender := sender.New(logg, rabbitConsumer)
+	calendarSender := sender.New(logg, consumer)
 	calendarSender.Start(ctx)
 }

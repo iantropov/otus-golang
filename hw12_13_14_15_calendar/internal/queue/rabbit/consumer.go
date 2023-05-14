@@ -4,15 +4,17 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/iantropov/otus-golang/hw12_13_14_15_calendar/internal/queue"
+	"github.com/iantropov/otus-golang/hw12_13_14_15_calendar/pkg/logger"
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
 type Consumer struct {
-	logger Logger
+	logger *logger.Logger
 	conn   *Connection
 }
 
-func NewConsumer(logger Logger, conn *Connection) *Consumer {
+func NewConsumer(logger *logger.Logger, conn *Connection) queue.Consumer {
 	return &Consumer{
 		logger: logger,
 		conn:   conn,
@@ -48,14 +50,14 @@ func (c *Consumer) Consume(ctx context.Context) (<-chan []byte, error) {
 			case message, ok = <-msgs:
 			}
 
+			if !ok {
+				return
+			}
+
 			select {
 			case <-ctx.Done():
 				return
 			case out <- message.Body:
-			}
-
-			if !ok {
-				return
 			}
 		}
 	}()

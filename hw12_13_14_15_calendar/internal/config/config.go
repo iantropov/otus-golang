@@ -16,7 +16,7 @@ type Config struct {
 	HTTP      HTTPConf
 	GRPC      GRPCConf
 	Scheduler SchedulerConf
-	Rabbit    RabbitConf
+	Queue     QueueConf
 }
 
 type LoggerConf struct {
@@ -40,9 +40,9 @@ type SchedulerConf struct {
 	PeriodSeconds int
 }
 
-type RabbitConf struct {
-	DSN   string
-	Queue string
+type QueueConf struct {
+	DSN  string
+	Name string
 }
 
 func NewConfig(path string) (config Config, err error) {

@@ -10,9 +10,9 @@ import (
 	"time"
 
 	"github.com/iantropov/otus-golang/hw12_13_14_15_calendar/internal/config"
-	"github.com/iantropov/otus-golang/hw12_13_14_15_calendar/internal/rabbit"
+	setupQueue "github.com/iantropov/otus-golang/hw12_13_14_15_calendar/internal/queue/setup"
 	"github.com/iantropov/otus-golang/hw12_13_14_15_calendar/internal/scheduler"
-	"github.com/iantropov/otus-golang/hw12_13_14_15_calendar/internal/setup"
+	setupStorage "github.com/iantropov/otus-golang/hw12_13_14_15_calendar/internal/storage/setup"
 	"github.com/iantropov/otus-golang/hw12_13_14_15_calendar/pkg/logger"
 	_ "github.com/lib/pq"
 )
@@ -45,7 +45,7 @@ func main() {
 		syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
 	defer cancel()
 
-	storage, err := setup.Storage(ctx, config.Storage, logg)
+	storage, err := setupStorage.Setup(ctx, config.Storage, logg)
 	if err != nil {
 		logg.Error(err.Error())
 		cancel()
@@ -53,17 +53,17 @@ func main() {
 	}
 	defer storage.Close(ctx)
 
-	rabbitConn, err := setup.Rabbit(config.Rabbit)
+	queueConn, err := setupQueue.Setup(config.Queue)
 	if err != nil {
 		logg.Error(err.Error())
 		cancel()
 		os.Exit(1)
 	}
-	defer rabbitConn.Close()
+	defer queueConn.Close()
 
-	rabbitProducer := rabbit.NewProducer(logg, rabbitConn)
+	producer := queueConn.NewProducer(logg)
 
-	calendarScheduler := scheduler.New(logg, storage, rabbitProducer, getSchedulerPeriod(config))
+	calendarScheduler := scheduler.New(logg, storage, producer, getSchedulerPeriod(config))
 	calendarScheduler.Schedule(ctx)
 }
 

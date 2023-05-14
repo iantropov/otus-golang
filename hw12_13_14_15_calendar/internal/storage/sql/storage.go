@@ -120,7 +120,7 @@ func (s *Storage) ListEventBeforeTime(ctx context.Context, before time.Time) []s
 }
 
 func (s *Storage) ListEventCreatedAfter(ctx context.Context, after time.Time) []storage.Event {
-	rows, err := s.db.QueryContext(ctx, SelectEventsCreatedAfter, after)
+	rows, err := s.db.QueryContext(ctx, SelectEventsCreatedAfter, after.UTC())
 	if err != nil {
 		s.logger.Error("failed to query: " + err.Error())
 		return nil

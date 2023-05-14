@@ -96,6 +96,7 @@ func (s *Scheduler) cleanupEvents(ctx context.Context) {
 
 func (s *Scheduler) scheduleEvents(ctx context.Context) {
 	events := s.storage.ListEventCreatedAfter(ctx, s.lastScheduledAt)
+	s.logger.Infof("Listed events after %+v: %+v\n", s.lastScheduledAt, events)
 	for i := range events {
 		if events[i].StartsAt.Add(-events[i].NotifyBefore).After(time.Now()) {
 			err := s.produceEvent(ctx, events[i])

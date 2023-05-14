@@ -1,0 +1,13 @@
+[logger]
+level = "INFO"
+
+[storage]
+type = "sql"
+dsn="host=calendar_db port=5432 user=calendar password=password dbname=calendar sslmode=disable"
+
+[scheduler]
+periodSeconds=1
+
+[queue]
+dsn="amqp://guest:guest@rabbitmq:5672/"
+name="notifications"

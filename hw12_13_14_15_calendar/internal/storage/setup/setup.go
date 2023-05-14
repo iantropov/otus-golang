@@ -1,8 +1,9 @@
-package setup
+package storage
 
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 
 	"github.com/iantropov/otus-golang/hw12_13_14_15_calendar/internal/config"
@@ -12,10 +13,9 @@ import (
 	"github.com/iantropov/otus-golang/hw12_13_14_15_calendar/pkg/logger"
 )
 
-func Storage(ctx context.Context, config config.StorageConf, logg *logger.Logger) (storage.Storage, error) {
-	var appStorage storage.Storage
+func Setup(ctx context.Context, config config.StorageConf, logg *logger.Logger) (storage.Storage, error) {
 	if config.Type == "memory" {
-		appStorage = memorystorage.New()
+		return memorystorage.New(), nil
 	}
 
 	if config.Type == "sql" {
@@ -31,10 +31,10 @@ func Storage(ctx context.Context, config config.StorageConf, logg *logger.Logger
 			return nil, fmt.Errorf("failed to get sqlstorage: %w", err)
 		}
 
-		appStorage = sqlStorage
+		return sqlStorage, nil
 	}
 
-	return appStorage, nil
+	return nil, errors.New("unsupported memory storage")
 }
 
 func getSQLDb(dsn string) (*sql.DB, error) {

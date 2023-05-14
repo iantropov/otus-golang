@@ -24,15 +24,6 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
-  calendar_sender:
-    build:
-      dockerfile: build/Dockerfile.calendar_sender
-      context: .
-      args:
-        - CONFIG_FILE=./configs/calendar_sender.compose.toml
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
   calendar_db:
     image: postgres:15.1
     environment:
@@ -40,8 +31,6 @@ services:
       POSTGRES_USER: calendar
       POSTGRES_PASSWORD: password
       PGDATA: "/var/lib/postgresql/data/pgdata"
-    volumes:
-      - ./pgdata:/var/lib/postgresql/data
     ports:
       - 5432:5432
     healthcheck:
@@ -64,10 +53,16 @@ services:
     ports:
       - '5672:5672'
       - '15672:15672'
-    volumes:
-      - './rmqdata:/var/lib/rabbitmq/mnesia/'
     healthcheck:
       test: rabbitmq-diagnostics -q ping
       interval: 30s
       timeout: 30s
       retries: 3
+
+  functest:
+    build: functest
+    command: "true"
+    environment:
+      API_BASE_URL: "http://calendar:8888"
+      TESTS_AMQP_DSN: "amqp://guest:guest@rabbitmq:5672/"
+      TESTS_POSTGRES_DSN: "host=calendar_db port=5432 user=calendar password=password dbname=calendar sslmode=disable"
