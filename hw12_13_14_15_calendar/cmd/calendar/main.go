@@ -15,7 +15,7 @@ import (
 	"github.com/iantropov/otus-golang/hw12_13_14_15_calendar/internal/server"
 	internalgrpc "github.com/iantropov/otus-golang/hw12_13_14_15_calendar/internal/server/grpc"
 	internalhttp "github.com/iantropov/otus-golang/hw12_13_14_15_calendar/internal/server/http"
-	"github.com/iantropov/otus-golang/hw12_13_14_15_calendar/internal/setup"
+	setupStorage "github.com/iantropov/otus-golang/hw12_13_14_15_calendar/internal/storage/setup"
 	"github.com/iantropov/otus-golang/hw12_13_14_15_calendar/pkg/logger"
 	_ "github.com/lib/pq"
 )
@@ -48,7 +48,7 @@ func main() {
 		syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
 	defer cancel()
 
-	storage, err := setup.Storage(ctx, config.Storage, logg)
+	storage, err := setupStorage.Setup(ctx, config.Storage, logg)
 	if err != nil {
 		logg.Error(err.Error())
 		cancel()

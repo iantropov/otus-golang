@@ -4,11 +4,12 @@ import (
 	"fmt"
 
 	"github.com/iantropov/otus-golang/hw12_13_14_15_calendar/internal/config"
-	"github.com/iantropov/otus-golang/hw12_13_14_15_calendar/internal/rabbit"
+	"github.com/iantropov/otus-golang/hw12_13_14_15_calendar/internal/queue"
+	"github.com/iantropov/otus-golang/hw12_13_14_15_calendar/internal/queue/rabbit"
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
-func Rabbit(config config.RabbitConf) (*rabbit.Connection, error) {
+func Setup(config config.QueueConf) (queue.Connection, error) {
 	conn, err := amqp.Dial(config.DSN)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to RabbitMQ: %w", err)
@@ -21,12 +22,12 @@ func Rabbit(config config.RabbitConf) (*rabbit.Connection, error) {
 	}
 
 	queue, err := ch.QueueDeclare(
-		config.Queue, // name
-		false,        // durable
-		false,        // delete when unused
-		false,        // exclusive
-		false,        // no-wait
-		nil,          // arguments
+		config.Name, // name
+		false,       // durable
+		false,       // delete when unused
+		false,       // exclusive
+		false,       // no-wait
+		nil,         // arguments
 	)
 	if err != nil {
 		ch.Close()

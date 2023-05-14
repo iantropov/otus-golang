@@ -1,6 +1,6 @@
 [logger]
 level = "INFO"
 
-[rabbit]
+[queue]
 dsn="amqp://guest:guest@rabbitmq:5672/"
-queue="notifications"
+name="notifications"

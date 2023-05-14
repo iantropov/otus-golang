@@ -3,19 +3,13 @@ package rabbit
 import (
 	"context"
 
+	"github.com/iantropov/otus-golang/hw12_13_14_15_calendar/pkg/logger"
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
 type Producer struct {
-	logger Logger
+	logger *logger.Logger
 	conn   *Connection
-}
-
-func NewProducer(logger Logger, conn *Connection) *Producer {
-	return &Producer{
-		logger: logger,
-		conn:   conn,
-	}
 }
 
 func (p *Producer) Produce(ctx context.Context, message []byte) error {
