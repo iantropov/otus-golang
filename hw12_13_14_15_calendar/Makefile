@@ -80,7 +80,7 @@ functest:
 	docker-compose -f docker-compose.functest.yml up migrate_db ;\
 	docker-compose -f docker-compose.functest.yml up --build -d ;\
 	test_status_code=0 ;\
-	docker-compose -f docker-compose.functest.yml run functest go test || test_status_code=$$? ;\
+	docker-compose -f docker-compose.functest.yml run functest go test -v -p 1 || test_status_code=$$? ;\
 	docker-compose -f docker-compose.functest.yml down ;\
 	exit $$test_status_code ;
 
