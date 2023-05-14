@@ -8,6 +8,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/iantropov/otus-golang/hw12_13_14_15_calendar/internal/app"
@@ -121,11 +122,11 @@ func respondWithSuccess(resWriter http.ResponseWriter, r *http.Request, rawJSON 
 }
 
 func writeErrorJSON(w http.ResponseWriter, text string, err error) {
-	buf := bytes.NewBufferString("{\"message\":\"")
-	buf.WriteString(text)
-	buf.WriteString("\",\"error\":\"")
-	buf.WriteString(err.Error())
-	buf.WriteString("\"}\n")
+	buf := bytes.NewBufferString(`{"message":`)
+	buf.WriteString(strconv.Quote(text))
+	buf.WriteString(`,"error":`)
+	buf.WriteString(strconv.Quote(err.Error()))
+	buf.WriteString(`}`)
 
 	w.Write(buf.Bytes())
 }

@@ -24,15 +24,6 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
-  calendar_sender:
-    build:
-      dockerfile: build/Dockerfile.calendar_sender
-      context: .
-      args:
-        - CONFIG_FILE=./configs/calendar_sender.compose.toml
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
   calendar_db:
     image: postgres:15.1
     environment:
