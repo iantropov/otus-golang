@@ -3,7 +3,7 @@ package sqlstorage
 import "time"
 
 type Event struct {
-	ID           int64         `db:"id"`
+	ID           string        `db:"id"`
 	Title        string        `db:"title"`
 	StartsAt     time.Time     `db:"starts_at"`
 	EndsAt       time.Time     `db:"ends_at"`
