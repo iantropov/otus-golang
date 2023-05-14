@@ -28,6 +28,7 @@ func New(logger Logger, storage storage.Storage) *App {
 }
 
 func (a *App) CreateEvent(ctx context.Context, event storage.Event) error {
+	event.CreatedAt = time.Now()
 	return wrapError(a.storage.Create(ctx, event))
 }
 

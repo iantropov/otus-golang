@@ -1,14 +1,30 @@
-BIN := "./bin/calendar"
+BIN_CALENDAR := "./bin/calendar"
+BIN_CALENDAR_SCHEDULER := "./bin/calendar_scheduler"
+BIN_CALENDAR_SENDER := "./bin/calendar_sender"
 DOCKER_IMG="calendar:develop"
 
 GIT_HASH := $(shell git log --format="%h" -n 1)
 LDFLAGS := -X main.release="develop" -X main.buildDate=$(shell date -u +%Y-%m-%dT%H:%M:%S) -X main.gitHash=$(GIT_HASH)
 
-build:
-	go build -v -o $(BIN) -ldflags "$(LDFLAGS)" ./cmd/calendar
+build: build-calendar build-calendar-scheduler build-calendar-sender
 
-run: build
-	$(BIN) -config ./configs/config.memory.toml
+build-calendar:
+	go build -v -o $(BIN_CALENDAR) -ldflags "$(LDFLAGS)" ./cmd/calendar
+
+run-calendar: build-calendar
+	$(BIN_CALENDAR) -config ./configs/calendar.sql.toml
+
+build-calendar-scheduler:
+	go build -v -o $(BIN_CALENDAR_SCHEDULER) -ldflags "$(LDFLAGS)" ./cmd/calendar_scheduler
+
+run-calendar-scheduler: build-calendar-scheduler
+	$(BIN_CALENDAR_SCHEDULER) -config ./configs/calendar_scheduler.sql.toml
+
+build-calendar-sender:
+	go build -v -o $(BIN_CALENDAR_SENDER) -ldflags "$(LDFLAGS)" ./cmd/calendar_sender
+
+run-calendar-sender: build-calendar-sender
+	$(BIN_CALENDAR_SENDER) -config ./configs/calendar_sender.toml
 
 build-img:
 	docker build \
@@ -19,8 +35,14 @@ build-img:
 run-img: build-img
 	docker run $(DOCKER_IMG)
 
-version: build
-	$(BIN) version
+version-calendar: build-calendar
+	$(BIN_CALENDAR) version
+
+version-calendar-scheduler: build-calendar-scheduler
+	$(BIN_CALENDAR_SCHEDULER) version
+
+version-calendar-sender: build-calendar-sender
+	$(BIN_CALENDAR_SENDER) version
 
 test:
 	go test -race ./internal/...
@@ -41,4 +63,7 @@ generate: install-grpc-deps
 			--go-grpc_out=pkg/event_service_v1  --go-grpc_opt=paths=source_relative \
 			EventService.proto
 
-.PHONY: build run build-img run-img version test lint generate
+.PHONY: build build-calendar build-calendar-scheduler build-calendar-sender
+.PHONY: run-calendar run-calendar-scheduler run-calendar-sender
+.PHONY: version-calendar version-calendar-scheduler version-calendar-sender
+.PHONY: build-img run-img test lint generate

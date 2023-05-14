@@ -55,6 +55,7 @@ func (s *Storage) Create(ctx context.Context, event storage.Event) error {
 		event.Title,
 		event.StartsAt,
 		event.EndsAt,
+		event.CreatedAt,
 		event.Description,
 		event.UserID,
 		event.NotifyBefore.Abs(),
@@ -68,6 +69,7 @@ func (s *Storage) Get(ctx context.Context, id storage.EventID) (event storage.Ev
 		&event.Title,
 		&event.StartsAt,
 		&event.EndsAt,
+		&event.CreatedAt,
 		&event.Description,
 		&event.UserID,
 		&event.NotifyBefore,
@@ -96,26 +98,50 @@ func (s *Storage) Delete(ctx context.Context, id storage.EventID) error {
 }
 
 func (s *Storage) ListEventForDay(ctx context.Context, day time.Time) []storage.Event {
-	return s.rangeEvents(ctx, day, day.AddDate(0, 0, 1))
+	return s.rangeEventsIn(ctx, day, day.AddDate(0, 0, 1))
 }
 
 func (s *Storage) ListEventForWeek(ctx context.Context, weekStart time.Time) []storage.Event {
-	return s.rangeEvents(ctx, weekStart, weekStart.AddDate(0, 0, 7))
+	return s.rangeEventsIn(ctx, weekStart, weekStart.AddDate(0, 0, 7))
 }
 
 func (s *Storage) ListEventForMonth(ctx context.Context, monthStart time.Time) []storage.Event {
-	return s.rangeEvents(ctx, monthStart, monthStart.AddDate(0, 1, 0))
+	return s.rangeEventsIn(ctx, monthStart, monthStart.AddDate(0, 1, 0))
 }
 
-func (s *Storage) rangeEvents(ctx context.Context, startTime time.Time, endTime time.Time) []storage.Event {
-	res := make([]storage.Event, 0)
+func (s *Storage) ListEventBeforeTime(ctx context.Context, before time.Time) []storage.Event {
+	rows, err := s.db.QueryContext(ctx, SelectEventsBeforeTime, before)
+	if err != nil {
+		s.logger.Error("failed to query: " + err.Error())
+		return nil
+	}
+	defer rows.Close()
+	return s.rangeEvents(rows)
+}
 
+func (s *Storage) ListEventCreatedAfter(ctx context.Context, after time.Time) []storage.Event {
+	rows, err := s.db.QueryContext(ctx, SelectEventsCreatedAfter, after)
+	if err != nil {
+		s.logger.Error("failed to query: " + err.Error())
+		return nil
+	}
+	defer rows.Close()
+	return s.rangeEvents(rows)
+}
+
+func (s *Storage) rangeEventsIn(ctx context.Context, startTime time.Time, endTime time.Time) []storage.Event {
 	rows, err := s.db.QueryContext(ctx, SelectEventsForPeriod, startTime, endTime)
 	if err != nil {
 		s.logger.Error("failed to query: " + err.Error())
 		return nil
 	}
 	defer rows.Close()
+	return s.rangeEvents(rows)
+}
+
+func (s *Storage) rangeEvents(rows *sql.Rows) []storage.Event {
+	res := make([]storage.Event, 0)
+
 	for rows.Next() {
 		var event storage.Event
 		err := rows.Scan(
@@ -123,6 +149,7 @@ func (s *Storage) rangeEvents(ctx context.Context, startTime time.Time, endTime 
 			&event.Title,
 			&event.StartsAt,
 			&event.EndsAt,
+			&event.CreatedAt,
 			&event.Description,
 			&event.UserID,
 			&event.NotifyBefore,
@@ -134,7 +161,7 @@ func (s *Storage) rangeEvents(ctx context.Context, startTime time.Time, endTime 
 		res = append(res, event)
 	}
 
-	err = rows.Err()
+	err := rows.Err()
 	if err != nil {
 		s.logger.Error("failed to iterate: " + err.Error())
 		return nil
